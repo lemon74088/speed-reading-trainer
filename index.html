@@ -365,6 +365,9 @@ input[type=range]:disabled{opacity:.45;cursor:not-allowed}
 /* 五点校准 */
 .calib-overlay{position:fixed;inset:0;z-index:1200;background:rgba(12,10,9,.92);display:grid;place-items:center}
 .calib-note{position:absolute;top:28px;left:0;right:0;text-align:center;color:rgba(243,237,225,.72);font-size:13px;letter-spacing:.06em}
+.calib-tip{position:absolute;top:56px;left:0;right:0;text-align:center;color:rgba(243,237,225,.5);font-size:12px}
+.calib-prog{position:absolute;left:22%;right:22%;bottom:52px;height:2px;background:rgba(243,237,225,.12);border-radius:2px;overflow:hidden}
+.calib-prog i{display:block;height:100%;width:0;background:var(--amber);transition:width .08s linear}
 .calib-dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;
   background:var(--amber);box-shadow:0 0 24px rgba(217,164,65,.8);transform:scale(.6);opacity:.9}
 .calib-dot.grow{animation:calibGrow 1.1s ease-out forwards}
@@ -1262,7 +1265,17 @@ function buildSchulte(params){
     dot.style.opacity = '0.9';
     dot.style.transform = 'translate(' + x + 'px,' + y + 'px)';
     const el = document.elementFromPoint(x, y);
-    const cell = el && el.closest ? el.closest('.cell') : null;
+    let cell = el && el.closest ? el.closest('.cell') : null;
+    if (!cell) {
+      /* 落在格线缝隙里时吸附最近的格子，减少「明明在看却没反应」 */
+      let best = null, bd = 30;
+      document.querySelectorAll('#gridBox .cell').forEach(c => {
+        const r = c.getBoundingClientRect();
+        const d = Math.max(0, Math.max(r.left - x, x - r.right, r.top - y, y - r.bottom));
+        if (d < bd) { bd = d; best = c; }
+      });
+      cell = best;
+    }
     if (cell !== dwellCell) { clearDwell(dwellCell); dwellCell = cell; dwellT0 = performance.now(); }
     if (!cell) return;
     if (cell.classList.contains('done')) { clearDwell(cell); dwellCell = null; return; }
@@ -2034,34 +2047,49 @@ const Assist = (function(){
       const pts = [[0.5, 0.5], [0.12, 0.12], [0.88, 0.12], [0.88, 0.88], [0.12, 0.88]];
       const ov = document.createElement('div');
       ov.className = 'calib-overlay';
-      ov.innerHTML = '<div class="calib-note">目光停在发亮的点上，头不要动 · <b id="calibStep">1 / 5</b></div>';
+      ov.innerHTML = '<div class="calib-note">盯住亮点，头保持不动 · <b id="calibStep">1 / 5</b></div>' +
+        '<div class="calib-tip" id="calibTip">亮点会停留约 2 秒，跟不上的话停在这一步就好</div>' +
+        '<div class="calib-prog"><i id="calibBar"></i></div>';
       const dot = document.createElement('i');
       dot.className = 'calib-dot';
       ov.appendChild(dot);
       document.body.appendChild(ov);
+      const bar = ov.querySelector('#calibBar'), tip = ov.querySelector('#calibTip'), step = ov.querySelector('#calibStep');
       const samples = [];
-      let i = 0;
-      function finish(ok){ ov.remove(); if (ok) fitMap(samples); resolve(ok); }
-      function place(){
+      let i = 0, weakAny = false;
+      function finish(ok){
+        ov.remove();
+        if (ok) { fitMap(samples); if (weakAny) toast('校准中没能稳定看到人脸，偏差大就重校'); }
+        resolve(ok);
+      }
+      function stage(){
+        if (i >= pts.length) { finish(true); return; }
         dot.style.left = (pts[i][0] * 100) + '%';
         dot.style.top = (pts[i][1] * 100) + '%';
         dot.classList.remove('grow'); void dot.offsetWidth; dot.classList.add('grow');
-        const stp = ov.querySelector('#calibStep');
-        if (stp) stp.textContent = (i + 1) + ' / 5';
-        setTimeout(sample, 380);
-      }
-      function sample(){
-        let n = 0, ax = 0, ay = 0;
+        step.textContent = (i + 1) + ' / 5';
+        tip.textContent = '盯住这个亮点，眼睛跟过去就好，不用转头';
+        const t0 = performance.now(), hold = 2200;
+        let ax = 0, ay = 0, n = 0;
         const tick = () => {
-          ax += last.sx; ay += last.sy; n++;
-          if (n < 12) { requestAnimationFrame(tick); return; }
-          samples.push({ sx: ax / n, sy: ay / n, tx: pts[i][0], ty: pts[i][1] });
+          if (!ov.isConnected) return;
+          const t = performance.now() - t0;
+          if (bar) bar.style.width = Math.min(100, t / hold * 100) + '%';
+          if (last.lms) { ax += last.sx; ay += last.sy; n++; }
+          if (t < hold) { requestAnimationFrame(tick); return; }
+          if (n < 10) {
+            weakAny = true;
+            tip.textContent = '没稳定看到人脸，先用默认映射继续';
+            samples.push({ sx: 0.5, sy: 0.5, tx: pts[i][0], ty: pts[i][1] });
+          } else {
+            samples.push({ sx: ax / n, sy: ay / n, tx: pts[i][0], ty: pts[i][1] });
+          }
           i++;
-          if (i >= pts.length) finish(true); else place();
+          setTimeout(stage, 220);
         };
         requestAnimationFrame(tick);
       }
-      place();
+      stage();
     });
   }
 
