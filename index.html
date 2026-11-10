@@ -1988,10 +1988,35 @@ const Assist = (function(){
   };
   const st = { on: false, busy: false, paused: false, denied: false, degraded: 0 };
   let stream = null, video = null, landmarker = null, rafId = 0;
-  let lastTs = 0, costAvg = 0, costN = 0, lastGazeAt = 0, lumaCv = null, lumaCtx = null, lumaAt = 0;
+  let lastTs = 0, costAvg = 0, costN = 0, lastGazeAt = 0, lumaCv = null, lumaCtx = null, lumaAt = 0, prepCv = null, prepCtx = null;
   const last = { lms: null, faces: 0, cost: 0, fps: 0, at: 0, pitch: 0, yaw: 0, irisX: 0.5, irisY: 0.5, sx: 0.5, sy: 0.5, blink: false, lum: null };
   const gmap = { ready: false, ax: 1, bx: 0, ay: 1, by: 0, kx: null, ky: null };
   const sm = { x: 0.5, y: 0.5 };
+
+  /* One Euro Filter：低速重平滑、高速不拖影，专门收拾 landmark 的高频抖动 */
+  function oneEuro(minCutoff, beta, dCutoff){
+    let xPrev = null, dxPrev = 0, tPrev = 0;
+    const alpha = (cut, dt) => {
+      const tau = 1 / (2 * Math.PI * cut);
+      return 1 / (1 + tau / dt);
+    };
+    return {
+      filter(v, t){
+        const dt = tPrev ? Math.max(1, t - tPrev) / 1000 : 1 / 60;
+        tPrev = t;
+        if (xPrev == null) { xPrev = v; return v; }
+        const dx = (v - xPrev) / dt;
+        const aD = alpha(dCutoff, dt);
+        dxPrev = dxPrev + aD * (dx - dxPrev);
+        const cut = minCutoff + beta * Math.abs(dxPrev);
+        const a = alpha(cut, dt);
+        xPrev = xPrev + a * (v - xPrev);
+        return xPrev;
+      },
+      reset(){ xPrev = null; dxPrev = 0; tPrev = 0; }
+    };
+  }
+  const euX = oneEuro(0.9, 0.035, 1.2), euY = oneEuro(0.9, 0.035, 1.2);
   let round = null;
   const cal = { samples: [], base: null };
   const post = { bad: false, badSince: 0, lastPrompt: 0, value: '未检测' };
@@ -2060,11 +2085,12 @@ const Assist = (function(){
       rows[r].push(o);
     });
     gmap.ky = buildKnots(rows, 'sy');
-    gmap.ready = true; sm.x = 0.5; sm.y = 0.5;
+    gmap.ready = true; sm.x = 0.5; sm.y = 0.5; euX.reset(); euY.reset();
   }
   function isCalibrated(){ return gmap.ready; }
   function point(){
-    if (!gmap.ready || !st.on || st.paused || !last.lms || last.blink) return null;
+    if (!gmap.ready || !st.on || st.paused) return null;
+    if (!last.lms && performance.now() - (last.faceAt || 0) > 500) return null;
     const x = gmap.kx ? invMap(gmap.kx, last.sx) : gmap.ax * last.sx + gmap.bx;
     const y = gmap.ky ? invMap(gmap.ky, last.sy) : gmap.ay * last.sy + gmap.by;
     sm.x += (Math.max(0, Math.min(1, x)) - sm.x) * 0.2;
@@ -2254,9 +2280,19 @@ const Assist = (function(){
     lastTs = now;
     if (!landmarker) return;
     let res = null;
+    let src = video;
+    /* 暗光时先做一次轻量对比增强再送模型（全量 CLAHE 太重，这里用合成 filter） */
+    if (last.lum != null && last.lum < 55) {
+      try {
+        if (!prepCv) { prepCv = document.createElement('canvas'); prepCv.width = 480; prepCv.height = 360; prepCtx = prepCv.getContext('2d'); }
+        prepCtx.filter = 'brightness(1.18) contrast(1.25) saturate(1.05)';
+        prepCtx.drawImage(video, 0, 0, prepCv.width, prepCv.height);
+        src = prepCv;
+      } catch (e) { src = video; }
+    }
     const t0 = performance.now();
     try {
-      res = landmarker.detectForVideo(video, now);
+      res = landmarker.detectForVideo(src, now);
     } catch (e) { return; }
     const cost = performance.now() - t0;
     last.cost = cost;
@@ -2282,6 +2318,7 @@ const Assist = (function(){
     const lms = res && res.faceLandmarks && res.faceLandmarks[0];
     const s = sense();
     last.lms = lms || null; last.faces = lms ? 1 : 0;
+  if (lms) last.faceAt = now;
     if (lms && lms[159] && lms[145] && lms[33] && lms[133]) {
       const earR = Math.abs(lms[145].y - lms[159].y) / Math.max(0.004, Math.abs(lms[133].x - lms[33].x));
       let ear = earR;
@@ -2383,10 +2420,15 @@ const Assist = (function(){
       const vR = Math.max(0.004, Math.abs(lms[145].y - lms[159].y));
       const gx = ((irisR.x + irisL.x) / 2 - eyeX) / eyeW;
       const gy = ((irisR.y + irisL.y) / 2 - (lms[159].y + lms[145].y) / 2) / vR;
-      const sy = 0.5 + gy * 0.8 + dPitch * 1.6;
-      const sx = 0.5 - yawIdx * 1.4 + gx * 0.8;
-      gaze.sx = sx; gaze.sy = sy; last.irisX = gx; last.irisY = gy;
-      last.sx = sx; last.sy = sy;
+      const rawY = 0.5 + gy * 0.8 + dPitch * 1.6;
+      const rawX = 0.5 - yawIdx * 1.4 + gx * 0.8;
+      last.irisX = gx; last.irisY = gy;
+      /* 眨眼帧不更新坐标，保留上一位置，避免落点闪烁 */
+      if (!last.blink) {
+        last.sx = euX.filter(rawX, now);
+        last.sy = euY.filter(rawY, now);
+      }
+      gaze.sx = last.sx; gaze.sy = last.sy;
       if (gaze.guide != null) {
         const follow = Math.abs(sy - gaze.guide) < 0.2;
         gaze.state = follow ? 'follow' : 'idle';
