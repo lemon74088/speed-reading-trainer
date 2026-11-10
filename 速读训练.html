@@ -1302,7 +1302,11 @@ function buildSchulte(params){
     dwellOn = true;
     btn.setAttribute('aria-pressed', 'true');
     btn.textContent = '关闭';
-    if (tip) tip.textContent = '已开启：目光停在数字上约 0.9 秒即选中。粗估定位，偏差大就重校。';
+    if (tip) {
+      const d = Assist.debug();
+      const low = d.lum != null && d.lum < 55;
+      tip.textContent = '已开启：目光停在数字上约 0.9 秒即选中。' + (low ? '画面偏暗，先补光定位会稳一些。' : '偏差大就重校。');
+    }
     ensureDot();
     if (!dwellRaf) dwellRaf = requestAnimationFrame(dwellFrame);
   }
@@ -1984,9 +1988,9 @@ const Assist = (function(){
   };
   const st = { on: false, busy: false, paused: false, denied: false, degraded: 0 };
   let stream = null, video = null, landmarker = null, rafId = 0;
-  let lastTs = 0, costAvg = 0, costN = 0, lastGazeAt = 0;
-  const last = { lms: null, faces: 0, cost: 0, fps: 0, at: 0, pitch: 0, yaw: 0, irisX: 0.5, irisY: 0.5, sx: 0.5, sy: 0.5 };
-  const gmap = { ready: false, ax: 1, bx: 0, ay: 1, by: 0 };
+  let lastTs = 0, costAvg = 0, costN = 0, lastGazeAt = 0, lumaCv = null, lumaCtx = null, lumaAt = 0;
+  const last = { lms: null, faces: 0, cost: 0, fps: 0, at: 0, pitch: 0, yaw: 0, irisX: 0.5, irisY: 0.5, sx: 0.5, sy: 0.5, blink: false, lum: null };
+  const gmap = { ready: false, ax: 1, bx: 0, ay: 1, by: 0, kx: null, ky: null };
   const sm = { x: 0.5, y: 0.5 };
   let round = null;
   const cal = { samples: [], base: null };
@@ -2004,13 +2008,35 @@ const Assist = (function(){
       faces: last.faces, cost: Math.round(last.cost), fps: Math.round(last.fps || 0),
       pitch: last.pitch, yaw: last.yaw, irisX: last.irisX, irisY: last.irisY,
       lms: last.lms, posture: post.value, gaze: gaze.value, video: video,
-      calibrated: !!cal.base,
+      calibrated: !!cal.base, blink: last.blink, lum: last.lum, calibratedGaze: gmap.ready,
       th: { scale: 0.11 * s.f, cy: 0.055 * s.f, pitch: 0.075 * s.f }
     };
   }
   function resetCal(){ cal.samples = []; cal.base = null; }
 
   /* 粗粒度注视定位：五点校准 + 线性映射，只够分辨方格级目标 */
+  /* 9 点校准：按列/按行取折点做分段线性映射，能吃掉一部分非线性与头位差异 */
+  function buildKnots(cols, axis){
+    const knots = [];
+    for (let c = 0; c < 3; c++) {
+      const vals = cols[c].map(o => o[axis]).filter(v => isFinite(v));
+      if (!vals.length) return null;
+      const v = vals.reduce((a, b) => a + b, 0) / vals.length;
+      knots.push({ s: v, t: [0.15, 0.5, 0.85][c] });
+    }
+    for (let i = 1; i < knots.length; i++) {
+      if (!(knots[i].s > knots[i - 1].s + 0.008)) return null;
+    }
+    return knots;
+  }
+  function invMap(knots, v){
+    if (!knots) return v;
+    if (v <= knots[0].s) return knots[0].t + (v - knots[0].s) * 2;
+    if (v >= knots[2].s) return knots[2].t + (v - knots[2].s) * 2;
+    const k = v <= knots[1].s ? [knots[0], knots[1]] : [knots[1], knots[2]];
+    const r = (v - k[0].s) / (k[1].s - k[0].s);
+    return k[0].t + r * (k[1].t - k[0].t);
+  }
   function fitMap(list){
     const mean = (a, k) => a.reduce((s, o) => s + o[k], 0) / a.length;
     const msx = mean(list, 'sx'), msy = mean(list, 'sy'), mtx = mean(list, 'tx'), mty = mean(list, 'ty');
@@ -2022,12 +2048,25 @@ const Assist = (function(){
     const ax = dx > 0.0015 ? nx / dx : 1, ay = dy > 0.0015 ? ny / dy : 1;
     gmap.ax = Math.max(-6, Math.min(6, ax)); gmap.ay = Math.max(-6, Math.min(6, ay));
     gmap.bx = mtx - gmap.ax * msx; gmap.by = mty - gmap.ay * msy;
+    const cols = [[], [], []];
+    list.forEach(o => {
+      const c = o.tx < 0.33 ? 0 : (o.tx > 0.66 ? 2 : 1);
+      cols[c].push(o);
+    });
+    gmap.kx = buildKnots(cols, 'sx');
+    const rows = [[], [], []];
+    list.forEach(o => {
+      const r = o.ty < 0.33 ? 0 : (o.ty > 0.66 ? 2 : 1);
+      rows[r].push(o);
+    });
+    gmap.ky = buildKnots(rows, 'sy');
     gmap.ready = true; sm.x = 0.5; sm.y = 0.5;
   }
   function isCalibrated(){ return gmap.ready; }
   function point(){
-    if (!gmap.ready || !st.on || st.paused || !last.lms) return null;
-    const x = gmap.ax * last.sx + gmap.bx, y = gmap.ay * last.sy + gmap.by;
+    if (!gmap.ready || !st.on || st.paused || !last.lms || last.blink) return null;
+    const x = gmap.kx ? invMap(gmap.kx, last.sx) : gmap.ax * last.sx + gmap.bx;
+    const y = gmap.ky ? invMap(gmap.ky, last.sy) : gmap.ay * last.sy + gmap.by;
     sm.x += (Math.max(0, Math.min(1, x)) - sm.x) * 0.2;
     sm.y += (Math.max(0, Math.min(1, y)) - sm.y) * 0.2;
     return { x: sm.x, y: sm.y };
@@ -2044,11 +2083,11 @@ const Assist = (function(){
     return new Promise(resolve => {
       if (!st.on) { toast('先开启镜头再校准'); resolve(false); return; }
       resetCal(); gmap.ready = false;
-      const pts = [[0.5, 0.5], [0.12, 0.12], [0.88, 0.12], [0.88, 0.88], [0.12, 0.88]];
+      const pts = [[0.15, 0.15], [0.5, 0.15], [0.85, 0.15], [0.15, 0.5], [0.5, 0.5], [0.85, 0.5], [0.15, 0.85], [0.5, 0.85], [0.85, 0.85]];
       const ov = document.createElement('div');
       ov.className = 'calib-overlay';
-      ov.innerHTML = '<div class="calib-note">盯住亮点，头保持不动 · <b id="calibStep">1 / 5</b></div>' +
-        '<div class="calib-tip" id="calibTip">亮点会停留约 2 秒，跟不上的话停在这一步就好</div>' +
+      ov.innerHTML = '<div class="calib-note">九个点，每点停 1.8 秒 · 头别动 · <b id="calibStep">1 / 9</b></div>' +
+        '<div class="calib-tip" id="calibTip">眼球跟到亮点就好，不用转头；光線不足會影響精度</div>' +
         '<div class="calib-prog"><i id="calibBar"></i></div>';
       const dot = document.createElement('i');
       dot.className = 'calib-dot';
@@ -2067,9 +2106,11 @@ const Assist = (function(){
         dot.style.left = (pts[i][0] * 100) + '%';
         dot.style.top = (pts[i][1] * 100) + '%';
         dot.classList.remove('grow'); void dot.offsetWidth; dot.classList.add('grow');
-        step.textContent = (i + 1) + ' / 5';
-        tip.textContent = '盯住这个亮点，眼睛跟过去就好，不用转头';
-        const t0 = performance.now(), hold = 2200;
+        step.textContent = (i + 1) + ' / ' + pts.length;
+        tip.textContent = last.lum != null && last.lum < 55
+          ? '画面偏暗，先把灯打开或面向光源再校准'
+          : '盯住这个亮点，眼睛跟过去就好，不用转头';
+        const t0 = performance.now(), hold = 1800;
         let ax = 0, ay = 0, n = 0;
         const tick = () => {
           if (!ov.isConnected) return;
@@ -2241,6 +2282,26 @@ const Assist = (function(){
     const lms = res && res.faceLandmarks && res.faceLandmarks[0];
     const s = sense();
     last.lms = lms || null; last.faces = lms ? 1 : 0;
+    if (lms && lms[159] && lms[145] && lms[33] && lms[133]) {
+      const earR = Math.abs(lms[145].y - lms[159].y) / Math.max(0.004, Math.abs(lms[133].x - lms[33].x));
+      let ear = earR;
+      if (lms[386] && lms[374] && lms[362] && lms[263]) {
+        const earL = Math.abs(lms[386].y - lms[374].y) / Math.max(0.004, Math.abs(lms[362].x - lms[263].x));
+        ear = Math.max(earR, earL);
+      }
+      last.blink = ear < 0.13;
+    } else { last.blink = false; }
+    if (video && video.readyState >= 2 && now - lumaAt > 1800) {
+      lumaAt = now;
+      try {
+        if (!lumaCv) { lumaCv = document.createElement('canvas'); lumaCv.width = 32; lumaCv.height = 24; lumaCtx = lumaCv.getContext('2d'); }
+        lumaCtx.drawImage(video, 0, 0, 32, 24);
+        const d = lumaCtx.getImageData(0, 0, 32, 24).data;
+        let sum = 0;
+        for (let k = 0; k < d.length; k += 4) sum += d[k] * 0.299 + d[k + 1] * 0.587 + d[k + 2] * 0.114;
+        last.lum = Math.round(sum / (d.length / 4));
+      } catch (e) {}
+    }
     if (!lms) {
       post.value = '未检测'; post.bad = false; post.badSince = 0;
       gaze.value = '离开屏幕';
