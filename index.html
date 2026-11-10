@@ -320,7 +320,7 @@ input[type=range]:disabled{opacity:.45;cursor:not-allowed}
 .rsvp-word{
   font-family:var(--serif);font-weight:600;letter-spacing:.04em;
   font-size:clamp(1.9rem,6vw,3.5rem);line-height:1.35;text-align:center;padding:0 8%;
-  will-change:opacity;
+  will-change:opacity;display:flex;flex-direction:column;align-items:center;gap:2px;
 }
 .rsvp-word.dim{opacity:.55}
 .focal{position:absolute;top:50%;transform:translateY(-50%);width:1px;height:38%;background:linear-gradient(180deg,transparent,rgba(217,164,65,.5),transparent)}
@@ -347,10 +347,33 @@ input[type=range]:disabled{opacity:.45;cursor:not-allowed}
   text-shadow:0 0 14px rgba(217,164,65,.28);
 }
 .pacer-stage.glow .pacer-line.active{animation:pacerGlow 2.4s ease-in-out infinite}
+.pacer-stage{--glowK:1}
 @keyframes pacerGlow{
-  0%,100%{box-shadow:inset 2px 0 0 var(--amber),0 0 22px rgba(217,164,65,.14);text-shadow:0 0 14px rgba(217,164,65,.26)}
-  50%{box-shadow:inset 2px 0 0 var(--amber),0 0 46px rgba(217,164,65,.36);text-shadow:0 0 30px rgba(217,164,65,.55)}
+  0%,100%{box-shadow:inset 2px 0 0 var(--amber),0 0 22px rgba(217,164,65,calc(.14 * var(--glowK,1)));text-shadow:0 0 14px rgba(217,164,65,calc(.26 * var(--glowK,1)))}
+  50%{box-shadow:inset 2px 0 0 var(--amber),0 0 46px rgba(217,164,65,calc(.36 * var(--glowK,1)));text-shadow:0 0 30px rgba(217,164,65,calc(.55 * var(--glowK,1)))}
 }
+.pacer-line.active{transition:box-shadow .4s,text-shadow .4s}
+
+/* 注视停留选格 */
+.cell.dwelling{border-color:rgba(217,164,65,.85);background:rgba(217,164,65,.10);box-shadow:inset 0 0 0 calc(2px + 10px * var(--dwell,0)) rgba(217,164,65,.30)}
+.cell.dwelling::after{content:'';position:absolute;inset:0;border-radius:6px;background:conic-gradient(rgba(217,164,65,.55) calc(var(--dwell,0) * 360deg), transparent 0);opacity:.16;pointer-events:none}
+.cell{position:relative}
+.gaze-dot{position:fixed;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;
+  border:1.5px solid rgba(217,164,65,.85);background:rgba(217,164,65,.12);box-shadow:0 0 16px rgba(217,164,65,.35);
+  pointer-events:none;opacity:0;transition:opacity .2s;z-index:60}
+
+/* 五点校准 */
+.calib-overlay{position:fixed;inset:0;z-index:1200;background:rgba(12,10,9,.92);display:grid;place-items:center}
+.calib-note{position:absolute;top:28px;left:0;right:0;text-align:center;color:rgba(243,237,225,.72);font-size:13px;letter-spacing:.06em}
+.calib-dot{position:absolute;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;
+  background:var(--amber);box-shadow:0 0 24px rgba(217,164,65,.8);transform:scale(.6);opacity:.9}
+.calib-dot.grow{animation:calibGrow 1.1s ease-out forwards}
+@keyframes calibGrow{0%{transform:scale(.5);opacity:.45}45%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:.8}}
+
+/* 逐词快闪的微调 */
+.rsvp-word .rsvp-ctx{display:block;font-size:.46em;line-height:1.4;opacity:0;color:rgba(243,237,225,.42);letter-spacing:.02em;transition:opacity .18s}
+.rsvp-word.show-ctx .rsvp-ctx{opacity:.55}
+.rsvp-word.big #wordMain,.rsvp-word.big{font-size:clamp(2.2rem,7vw,4.4rem)}
 .pacer-line.passed{color:rgba(243,237,225,.22)}
 
 /* 测验 */
@@ -1119,6 +1142,10 @@ function buildSchulte(params){
       '<div class="field"><label>方格规格</label><div class="seg" id="sizeSeg">' +
         [3,4,5].map(s => '<button data-size="' + s + '" aria-pressed="' + (s === valid) + '">' + s + '×' + s + '</button>').join('') +
       '</div></div>' +
+      '<div class="field" style="border-top:1px solid var(--line);padding-top:14px"><label>目光停留选格（实验）</label>' +
+        '<div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn mini" id="dwellToggle" aria-pressed="false" style="flex:1">开启</button><button class="btn mini" id="dwellCalib" style="flex:1">校准</button></div>' +
+        '<div id="dwellState" style="color:var(--muted);font-size:12px;line-height:1.65">未开启。开启后可把目光停在数字上停留约 0.9 秒代替点击，定位是粗估，不准就重校。</div>' +
+      '</div>' +
       '<div class="stat-row"><span>下一个</span><b id="nextNum">1</b></div>' +
       '<div class="stat-row"><span>错误</span><b id="errNum">0</b></div>' +
       '<div class="stat-row"><span>进度</span><b id="progNum">0 / ' + (n * n) + '</b></div>' +
@@ -1185,9 +1212,8 @@ function buildSchulte(params){
     if (typeof Assist !== 'undefined') Assist.endRound();
   }
 
-  gridBox.addEventListener('click', ev => {
-    const cell = ev.target.closest('.cell');
-    if (!cell || finished) return;
+  function hit(cell){
+    if (!cell || finished || cell.classList.contains('done')) return;
     const v = parseInt(cell.dataset.v, 10);
     if (!started) {
       started = true;
@@ -1209,6 +1235,77 @@ function buildSchulte(params){
       cell.classList.add('wrong');
       setTimeout(() => cell.classList.remove('wrong'), 320);
     }
+  }
+  gridBox.addEventListener('click', ev => hit(ev.target.closest('.cell')));
+
+  /* 目光停留选格 */
+  let dwellOn = false, dwellRaf = 0, dwellCell = null, dwellT0 = 0, dotEl = null;
+  function ensureDot(){
+    if (dotEl && dotEl.isConnected) return dotEl;
+    dotEl = document.createElement('i');
+    dotEl.className = 'gaze-dot';
+    document.body.appendChild(dotEl);
+    return dotEl;
+  }
+  function clearDwell(c){
+    if (!c) return;
+    c.classList.remove('dwelling');
+    c.style.removeProperty('--dwell');
+  }
+  function dwellFrame(){
+    if (!dwellOn) { dwellRaf = 0; return; }
+    dwellRaf = requestAnimationFrame(dwellFrame);
+    const pt = Assist.point();
+    const dot = ensureDot();
+    if (!pt) { dot.style.opacity = '0'; clearDwell(dwellCell); dwellCell = null; return; }
+    const x = pt.x * window.innerWidth, y = pt.y * window.innerHeight;
+    dot.style.opacity = '0.9';
+    dot.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    const el = document.elementFromPoint(x, y);
+    const cell = el && el.closest ? el.closest('.cell') : null;
+    if (cell !== dwellCell) { clearDwell(dwellCell); dwellCell = cell; dwellT0 = performance.now(); }
+    if (!cell) return;
+    if (cell.classList.contains('done')) { clearDwell(cell); dwellCell = null; return; }
+    const p = Math.min(1, (performance.now() - dwellT0) / 900);
+    cell.style.setProperty('--dwell', p.toFixed(3));
+    cell.classList.add('dwelling');
+    if (p >= 1) {
+      clearDwell(cell); dwellCell = null;
+      hit(cell);
+    }
+  }
+  async function enableDwell(){
+    const btn = $('#dwellToggle'), tip = $('#dwellState');
+    if (!Assist.isOn()) {
+      if (tip) tip.textContent = '正在开启镜头…';
+      await Assist.start();
+      if (!Assist.isOn()) { if (tip) tip.textContent = '镜头没起来，先用点击。'; return; }
+    }
+    if (!Assist.isCalibrated()) {
+      if (tip) tip.textContent = '校准中：盯着屏幕上的亮点，头保持不动。';
+      const ok = await Assist.calibrate();
+      if (!ok) { if (tip) tip.textContent = '校准未完成。'; return; }
+    }
+    dwellOn = true;
+    btn.setAttribute('aria-pressed', 'true');
+    btn.textContent = '关闭';
+    if (tip) tip.textContent = '已开启：目光停在数字上约 0.9 秒即选中。粗估定位，偏差大就重校。';
+    ensureDot();
+    if (!dwellRaf) dwellRaf = requestAnimationFrame(dwellFrame);
+  }
+  function disableDwell(){
+    dwellOn = false;
+    cancelAnimationFrame(dwellRaf); dwellRaf = 0;
+    clearDwell(dwellCell); dwellCell = null;
+    if (dotEl) dotEl.style.opacity = '0';
+    const btn = $('#dwellToggle'), tip = $('#dwellState');
+    if (btn) { btn.setAttribute('aria-pressed', 'false'); btn.textContent = '开启'; }
+    if (tip) tip.textContent = '未开启。开启后可把目光停在数字上停留约 0.9 秒代替点击。';
+  }
+  $('#dwellToggle').addEventListener('click', () => { if (dwellOn) disableDwell(); else enableDwell(); });
+  $('#dwellCalib').addEventListener('click', async () => {
+    if (!Assist.isOn()) { await Assist.start(); if (!Assist.isOn()) return; }
+    await Assist.calibrate();
   });
 
   $('#sizeSeg').addEventListener('click', ev => {
@@ -1232,7 +1329,7 @@ function buildSchulte(params){
   });
 
   paint();
-  return { destroy(){ cancelAnimationFrame(timerId); } };
+  return { destroy(){ cancelAnimationFrame(timerId); if (typeof disableDwell === 'function') disableDwell(); } };
 }
 
 /* ===== 模式二：RSVP 逐词快闪 ===== */
@@ -1259,11 +1356,21 @@ function tokenize(text, size){
   });
   return tokens;
 }
+function chunkTokens(list, n){
+  if (n <= 1) return list;
+  const out = [];
+  for (let i = 0; i < list.length; i += n) out.push(list.slice(i, i + n).join(''));
+  return out;
+}
 function buildRsvp(params){
   const meta = Store.meta();
   const lastWpm = clamp(parseInt(params.wpm || meta.lastRsvpWpm || 300, 10), 100, 800);
   let textId = getText(params.text) ? params.text : (getText(meta.lastText) ? meta.lastText : TEXTS[0].id);
   let wpm = lastWpm;
+  let paceMult = [0.85, 1, 1.15].indexOf(meta.rsvpPace) >= 0 ? meta.rsvpPace : 1;
+  let chunk = meta.rsvpChunk === 2 ? 2 : 1;
+  let big = meta.rsvpBig === true;
+  let showCtx = meta.rsvpCtx === true;
   let token = null;
   let timer = 0, paused = false, playing = false, started = false;
   let index = 0, tokens = [], charsDone = 0, totalChars = 0;
@@ -1286,7 +1393,22 @@ function buildRsvp(params){
             '<div class="range-row"><input type="range" id="wpmRange" min="100" max="800" step="50" value="' + wpm + '"><span class="wpm-read" id="wpmRead">' + wpm + '</span></div>' +
             '<div style="display:flex;justify-content:space-between;color:var(--muted);font-size:11px"><span>100 · 慢读</span><span>800 · 快闪</span></div>' +
           '</div>' +
-          '<div class="stat-row"><span>每词停留</span><b id="perWord">' + Math.round(2 / wpm * 60000) + ' ms</b></div>' +
+          '<div class="field"><label>每屏字数</label><div class="seg" id="chunkSeg">' +
+            '<button data-chunk="1" aria-pressed="' + (chunk === 1) + '">1 词</button>' +
+            '<button data-chunk="2" aria-pressed="' + (chunk === 2) + '">2 词</button>' +
+          '</div></div>' +
+          '<div class="field"><label>停留倍率（调大更好懂）</label><div class="seg" id="paceSeg">' +
+            [['0.85','紧'],['1','标准'],['1.15','缓']].map(([v,k]) => '<button data-pace="' + v + '" aria-pressed="' + (String(paceMult) === v) + '">' + k + '</button>').join('') +
+          '</div></div>' +
+          '<div class="field"><label>字级</label><div class="seg" id="bigSeg">' +
+            '<button data-big="0" aria-pressed="' + (!big) + '">中</button>' +
+            '<button data-big="1" aria-pressed="' + (big) + '">大</button>' +
+          '</div></div>' +
+          '<div class="field" style="display:flex;justify-content:space-between;align-items:center">' +
+            '<label style="margin:0">前后文淡影</label>' +
+            '<button class="btn mini" id="ctxToggle" aria-pressed="' + (showCtx) + '">' + (showCtx ? '开' : '关') + '</button>' +
+          '</div>' +
+          '<div class="stat-row"><span>每屏停留</span><b id="perWord">' + Math.round(2 / wpm * 60000) + ' ms</b></div>' +
           '<div class="stat-row"><span>预计时长</span><b id="estTime">—</b></div>' +
           '<button class="btn primary" id="startRsvp" style="width:100%">开始阅读</button>' +
           '<div style="color:var(--muted);font-size:12px;line-height:1.75">读完后直接进入对应文本的读后测验，正确率会与这次速度一起记录。</div>' +
@@ -1295,8 +1417,32 @@ function buildRsvp(params){
     $('#wpmRange').addEventListener('input', ev => {
       wpm = parseInt(ev.target.value, 10);
       $('#wpmRead').textContent = wpm;
-      $('#perWord').textContent = Math.round(2 / wpm * 60000) + ' ms';
       updateEstimate();
+    });
+    $('#chunkSeg').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-chunk]'); if (!b) return;
+      chunk = parseInt(b.getAttribute('data-chunk'), 10);
+      $$('#chunkSeg [data-chunk]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      Store.setMeta({ rsvpChunk: chunk }); updateEstimate();
+    });
+    $('#paceSeg').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-pace]'); if (!b) return;
+      paceMult = parseFloat(b.getAttribute('data-pace'));
+      $$('#paceSeg [data-pace]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      Store.setMeta({ rsvpPace: paceMult }); updateEstimate();
+    });
+    $('#bigSeg').addEventListener('click', ev => {
+      const b = ev.target.closest('[data-big]'); if (!b) return;
+      big = b.getAttribute('data-big') === '1';
+      $$('#bigSeg [data-big]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      Store.setMeta({ rsvpBig: big });
+    });
+    const ctxBtn = $('#ctxToggle');
+    if (ctxBtn) ctxBtn.addEventListener('click', () => {
+      showCtx = !showCtx;
+      ctxBtn.setAttribute('aria-pressed', String(showCtx));
+      ctxBtn.textContent = showCtx ? '开' : '关';
+      Store.setMeta({ rsvpCtx: showCtx });
     });
     $$('#textList [data-text]').forEach(btn => btn.addEventListener('click', () => {
       textId = btn.getAttribute('data-text');
@@ -1311,17 +1457,18 @@ function buildRsvp(params){
   function currentText(){ return getText(textId) || TEXTS[0]; }
   function updateEstimate(){
     const t = currentText();
-    tokens = tokenize(t.body, 2);
+    tokens = chunkTokens(tokenize(t.body, 2), chunk);
     totalChars = t.body.length;
-    const ms = tokens.reduce((sum, tk) => sum + tk.length / wpm * 60000, 0);
+    const ms = tokens.reduce((sum, tk) => sum + tk.length / wpm * 60000, 0) * paceMult;
     $('#estTime').textContent = fmtClock(ms);
-    $('#perWord').textContent = Math.round(2 / wpm * 60000) + ' ms';
+    const per = Math.round(chunk * 2 / wpm * 60000 * paceMult);
+    $('#perWord').textContent = per + ' ms';
   }
 
   function playView(){
     stageEl.querySelector('#rsvpBody').innerHTML =
       '<div class="rsvp-stage"><div class="rsvp-window"><i class="focal l"></i><i class="focal r"></i>' +
-        '<div class="rsvp-word" id="wordBox">准备</div></div>' +
+        '<div class="rsvp-word' + (big ? ' big' : '') + (showCtx ? ' show-ctx' : '') + '" id="wordBox"><span class="rsvp-ctx" id="ctxBefore"></span><span id="wordMain">准备</span><span class="rsvp-ctx" id="ctxAfter"></span></div></div>' +
         '<div class="rsvp-progress"><i id="progBar"></i></div>' +
         '<div class="rsvp-foot"><span id="footLeft">0 字</span><span id="footRight">' + fmtWpm(wpm) + '</span></div></div>' +
       '<div class="controls"><button class="btn" id="togglePlay">暂停</button><button class="btn" id="stopPlay">终止</button>' +
@@ -1339,7 +1486,11 @@ function buildRsvp(params){
   function draw(){
     const box = $('#wordBox');
     if (!box) return;
-    box.textContent = tokens[index] || '';
+    const main = $('#wordMain');
+    if (main) main.textContent = tokens[index] || '';
+    const before = $('#ctxBefore'), after = $('#ctxAfter');
+    if (before) before.textContent = showCtx && index > 0 ? tokens[index - 1] : '';
+    if (after) after.textContent = showCtx && index < tokens.length - 1 ? tokens[index + 1] : '';
     const pct = totalChars ? Math.round(charsDone / totalChars * 100) : 0;
     const bar = $('#progBar');
     if (bar) bar.style.width = pct + '%';
@@ -1354,7 +1505,7 @@ function buildRsvp(params){
     const tk = tokens[index];
     charsDone += tk.length;
     index += 1;
-    const wait = Math.max(40, tk.length / wpm * 60000);
+    const wait = Math.max(40, tk.length / wpm * 60000 * paceMult);
     timer = setTimeout(step, wait);
   }
 
@@ -1389,6 +1540,7 @@ function buildRsvp(params){
     if (finished) return;
     finished = true;
     playing = false;
+    clearInterval(focusTimer); focusTimer = 0;
     clearTimeout(timer);
     if (!paused) activeMs += Date.now() - segStart;
     document.removeEventListener('keydown', onKey);
@@ -1472,7 +1624,7 @@ function buildPacer(params){
   let textId = getText(params.text) ? params.text : (getText(meta.lastText) ? meta.lastText : TEXTS[0].id);
   let wpm = clamp(parseInt(params.wpm || meta.lastPacerWpm || 300, 10), 100, 600);
   let playing = false, paused = false, finished = false;
-  let lines = [], idx = 0, timer = 0;
+  let lines = [], idx = 0, timer = 0, focusTimer = 0;
   let activeMs = 0, segStart = 0, maxIdx = 0;
   let lineheights = [];
   let onKey = null;
@@ -1533,6 +1685,7 @@ function buildPacer(params){
       '<div class="controls"><button class="btn" id="paceToggle">暂停</button><button class="btn" id="paceStop">终止</button>' +
       '<button class="btn mini" id="glowToggle" aria-pressed="' + (Store.meta().glow === false ? 'false' : 'true') + '">发光 ' + (Store.meta().glow === false ? '关' : '开') + '</button>' +
       '<span id="paceInfo" style="color:var(--muted);font-size:12px;align-self:center">第 1 / ' + lines.length + ' 行</span>' +
+      '<span id="focusPill" style="color:var(--muted);font-size:12px;align-self:center">专注 —</span>' +
       '<span style="color:var(--muted);font-size:12px;align-self:center;margin-left:auto" id="paceWpm">' + wpm + ' WPM</span></div>';
     const inner = $('#pacerInner');
     inner.innerHTML = lines.map((l, i) => '<span class="pacer-line" data-i="' + i + '">' + l + '</span>').join('');
@@ -1550,6 +1703,19 @@ function buildPacer(params){
     onKey = ev => { if (ev.code === 'Space') { ev.preventDefault(); togglePause(); } };
     document.addEventListener('keydown', onKey);
     if (typeof Assist !== 'undefined') Assist.startRound('pacer');
+    clearInterval(focusTimer);
+    focusTimer = setInterval(() => {
+      const stage = $('#pacerStage'), pill = $('#focusPill');
+      if (!stage) { clearInterval(focusTimer); focusTimer = 0; return; }
+      const f = typeof Assist !== 'undefined' ? Assist.focusLevel() : null;
+      if (f == null) {
+        if (pill) pill.textContent = '专注 —';
+        stage.style.setProperty('--glowK', '1');
+        return;
+      }
+      if (pill) pill.textContent = '专注 ' + Math.round(f * 100) + '%';
+      stage.style.setProperty('--glowK', (0.28 + f * 0.72).toFixed(2));
+    }, 400);
   }
 
   function highlight(){
@@ -1806,7 +1972,9 @@ const Assist = (function(){
   const st = { on: false, busy: false, paused: false, denied: false, degraded: 0 };
   let stream = null, video = null, landmarker = null, rafId = 0;
   let lastTs = 0, costAvg = 0, costN = 0, lastGazeAt = 0;
-  const last = { lms: null, faces: 0, cost: 0, fps: 0, at: 0, pitch: 0, yaw: 0, irisX: 0.5, irisY: 0.5 };
+  const last = { lms: null, faces: 0, cost: 0, fps: 0, at: 0, pitch: 0, yaw: 0, irisX: 0.5, irisY: 0.5, sx: 0.5, sy: 0.5 };
+  const gmap = { ready: false, ax: 1, bx: 0, ay: 1, by: 0 };
+  const sm = { x: 0.5, y: 0.5 };
   let round = null;
   const cal = { samples: [], base: null };
   const post = { bad: false, badSince: 0, lastPrompt: 0, value: '未检测' };
@@ -1828,6 +1996,74 @@ const Assist = (function(){
     };
   }
   function resetCal(){ cal.samples = []; cal.base = null; }
+
+  /* 粗粒度注视定位：五点校准 + 线性映射，只够分辨方格级目标 */
+  function fitMap(list){
+    const mean = (a, k) => a.reduce((s, o) => s + o[k], 0) / a.length;
+    const msx = mean(list, 'sx'), msy = mean(list, 'sy'), mtx = mean(list, 'tx'), mty = mean(list, 'ty');
+    let nx = 0, dx = 0, ny = 0, dy = 0;
+    list.forEach(o => {
+      nx += (o.sx - msx) * (o.tx - mtx); dx += (o.sx - msx) * (o.sx - msx);
+      ny += (o.sy - msy) * (o.ty - mty); dy += (o.sy - msy) * (o.sy - msy);
+    });
+    const ax = dx > 0.0015 ? nx / dx : 1, ay = dy > 0.0015 ? ny / dy : 1;
+    gmap.ax = Math.max(-6, Math.min(6, ax)); gmap.ay = Math.max(-6, Math.min(6, ay));
+    gmap.bx = mtx - gmap.ax * msx; gmap.by = mty - gmap.ay * msy;
+    gmap.ready = true; sm.x = 0.5; sm.y = 0.5;
+  }
+  function isCalibrated(){ return gmap.ready; }
+  function point(){
+    if (!gmap.ready || !st.on || st.paused || !last.lms) return null;
+    const x = gmap.ax * last.sx + gmap.bx, y = gmap.ay * last.sy + gmap.by;
+    sm.x += (Math.max(0, Math.min(1, x)) - sm.x) * 0.2;
+    sm.y += (Math.max(0, Math.min(1, y)) - sm.y) * 0.2;
+    return { x: sm.x, y: sm.y };
+  }
+  function focusLevel(){
+    if (!st.on || st.paused) return null;
+    const g = gaze.value;
+    if (g === '跟随中' || g === '注视中' || g === '良好') return 1;
+    if (g === '未跟随') return 0.42;
+    if (g === '离开屏幕') return 0.08;
+    return null;
+  }
+  function calibrate(){
+    return new Promise(resolve => {
+      if (!st.on) { toast('先开启镜头再校准'); resolve(false); return; }
+      resetCal(); gmap.ready = false;
+      const pts = [[0.5, 0.5], [0.12, 0.12], [0.88, 0.12], [0.88, 0.88], [0.12, 0.88]];
+      const ov = document.createElement('div');
+      ov.className = 'calib-overlay';
+      ov.innerHTML = '<div class="calib-note">目光停在发亮的点上，头不要动 · <b id="calibStep">1 / 5</b></div>';
+      const dot = document.createElement('i');
+      dot.className = 'calib-dot';
+      ov.appendChild(dot);
+      document.body.appendChild(ov);
+      const samples = [];
+      let i = 0;
+      function finish(ok){ ov.remove(); if (ok) fitMap(samples); resolve(ok); }
+      function place(){
+        dot.style.left = (pts[i][0] * 100) + '%';
+        dot.style.top = (pts[i][1] * 100) + '%';
+        dot.classList.remove('grow'); void dot.offsetWidth; dot.classList.add('grow');
+        const stp = ov.querySelector('#calibStep');
+        if (stp) stp.textContent = (i + 1) + ' / 5';
+        setTimeout(sample, 380);
+      }
+      function sample(){
+        let n = 0, ax = 0, ay = 0;
+        const tick = () => {
+          ax += last.sx; ay += last.sy; n++;
+          if (n < 12) { requestAnimationFrame(tick); return; }
+          samples.push({ sx: ax / n, sy: ay / n, tx: pts[i][0], ty: pts[i][1] });
+          i++;
+          if (i >= pts.length) finish(true); else place();
+        };
+        requestAnimationFrame(tick);
+      }
+      place();
+    });
+  }
 
   function pill(){
     const el = $('#assistPill'), txt = $('#assistPillText');
@@ -2061,6 +2297,7 @@ const Assist = (function(){
       const sy = 0.5 + gy * 0.8 + dPitch * 1.6;
       const sx = 0.5 - yawIdx * 1.4 + gx * 0.8;
       gaze.sx = sx; gaze.sy = sy; last.irisX = gx; last.irisY = gy;
+      last.sx = sx; last.sy = sy;
       if (gaze.guide != null) {
         const follow = Math.abs(sy - gaze.guide) < 0.2;
         gaze.state = follow ? 'follow' : 'idle';
@@ -2127,7 +2364,7 @@ const Assist = (function(){
 
   window.addEventListener('hashchange', syncHud);
 
-  return { isOn, startRound, endRound, roundStats, setGuide, syncHud, enableDialog, stopAll, start, setLab, isLab, debug, resetCal,
+  return { isOn, startRound, endRound, roundStats, setGuide, syncHud, enableDialog, stopAll, start, setLab, isLab, debug, resetCal, point, focusLevel, calibrate, isCalibrated,
     refresh(){ pill(); paintHud(); syncHud(); } };
 })();
 window.Assist = Assist;

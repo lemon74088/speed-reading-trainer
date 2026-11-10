@@ -1,0 +1,2301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>速读训练 · 四种模式与坐姿眼动辅助</title>
+<meta name="description" content="纯浏览器速读训练：舒尔特方格、逐词快闪、节奏逐行、读后测验。成绩存在本机，摄像头辅助可选，可随时降级。">
+<link rel="preconnect" href="https://miaoda.feishu.cn">
+<link rel="preconnect" href="https://sf3-scmcdn-cn.feishucdn.com" crossorigin>
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23131110'/%3E%3Cpath d='M9 32c6.5-9.5 13.5-13.5 23-13.5s16.5 4 23 13.5c-6.5 9.5-13.5 13.5-23 13.5s-16.5-4-23-13.5z' fill='none' stroke='%23F3EDE1' stroke-width='2.6'/%3E%3Ccircle cx='32' cy='32' r='6.5' fill='%23D9A441'/%3E%3C/svg%3E">
+<style>
+/* ===== 设计 token ===== */
+:root{
+  --ink:#131110;
+  --ink-2:#191614;
+  --ink-3:#211c17;
+  --line:rgba(243,237,225,.13);
+  --line-2:rgba(243,237,225,.24);
+  --paper:#F3EDE1;
+  --paper-2:#CFC5B5;
+  --muted:#8B8276;
+  --amber:#D9A441;
+  --amber-soft:rgba(217,164,65,.14);
+  --green:#7FA46C;
+  --red:#C4604E;
+  --r-lg:16px;
+  --r-sm:10px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --shell:1180px;
+  --serif:"Noto Serif SC","Songti SC","Source Han Serif SC",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--ink);color:var(--paper);
+  font-family:var(--sans);font-size:15px;line-height:1.65;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  background-image:
+    radial-gradient(900px 520px at 12% -8%,rgba(120,86,34,.34),transparent 62%),
+    radial-gradient(760px 460px at 96% 4%,rgba(58,70,66,.20),transparent 66%),
+    radial-gradient(1000px 700px at 50% 118%,rgba(90,64,30,.16),transparent 60%);
+  background-attachment:fixed;min-height:100vh;
+}
+.grain{
+  position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
+  mix-blend-mode:overlay;display:none;
+}
+@media (min-width:768px){.grain{display:block}}
+a{color:inherit}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:6px}
+
+/* ===== 顶栏 ===== */
+.topbar{
+  position:sticky;top:0;z-index:30;
+  border-bottom:1px solid var(--line);
+  background:rgba(19,17,16,.94);
+}
+.topbar-inner{
+  max-width:var(--shell);margin:0 auto;padding:14px 20px;
+  display:flex;align-items:center;gap:18px;
+}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none}
+.brand svg{width:26px;height:26px;flex:none}
+.brand b{font-family:var(--serif);font-weight:700;font-size:17px;letter-spacing:.06em}
+.brand span{color:var(--muted);font-size:11.5px;letter-spacing:.14em;display:none}
+@media (min-width:560px){.brand span{display:inline}}
+.nav{margin-left:auto;display:flex;align-items:center;gap:4px}
+.nav button{
+  padding:8px 12px;border-radius:8px;color:var(--paper-2);font-size:13.5px;
+  transition:color .2s var(--ease),background .2s var(--ease);
+}
+.nav button:hover{color:var(--paper);background:rgba(243,237,225,.06)}
+.nav button[aria-current="true"]{color:var(--paper)}
+.nav button[aria-current="true"]::after{
+  content:"";display:block;height:1.5px;margin-top:5px;background:var(--amber);border-radius:2px;
+}
+.assist-pill{
+  margin-left:6px;display:flex;align-items:center;gap:7px;
+  border:1px solid var(--line);border-radius:999px;padding:6px 12px 6px 10px;font-size:12.5px;color:var(--paper-2);
+  transition:border-color .2s var(--ease),color .2s var(--ease),background .2s var(--ease);
+}
+.assist-pill:hover{border-color:var(--line-2);color:var(--paper)}
+.assist-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 3px rgba(139,130,118,.14)}
+.assist-pill.is-on .dot{background:var(--green);box-shadow:0 0 0 3px rgba(127,164,108,.16)}
+.assist-pill.is-on{color:var(--paper)}
+
+/* ===== 通用 ===== */
+.shell{max-width:var(--shell);margin:0 auto;padding:0 20px}
+.view{display:none}
+.view.is-active{display:block;animation:viewIn .45s var(--ease) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid var(--line-2);background:rgba(243,237,225,.02);color:var(--paper);
+  padding:11px 20px;border-radius:var(--r-sm);font-size:14px;min-height:44px;
+  transition:border-color .2s var(--ease),background .2s var(--ease),transform .2s var(--ease),color .2s var(--ease);
+}
+.btn:hover{border-color:rgba(243,237,225,.42);background:rgba(243,237,225,.05)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--amber);border-color:var(--amber);color:#1B1408;font-weight:500}
+.btn.primary:hover{background:#E4B259;border-color:#E4B259}
+.btn.quiet{border-color:transparent;color:var(--paper-2);padding:8px 12px}
+.btn.quiet:hover{color:var(--paper);background:rgba(243,237,225,.06);border-color:transparent}
+.btn:disabled,.btn[disabled]{opacity:.42;cursor:not-allowed}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* ===== 首页 ===== */
+.hero{
+  display:grid;gap:34px;padding:44px 0 40px;
+  grid-template-columns:1fr;
+  border-bottom:1px solid var(--line);
+}
+@media (min-width:940px){
+  .hero{grid-template-columns:1.08fr .92fr;align-items:center;gap:56px;padding:66px 0 58px}
+}
+.hero h1{
+  font-family:var(--serif);font-weight:700;margin:0;
+  font-size:clamp(2.3rem,7.6vw,4.1rem);line-height:1.14;letter-spacing:.005em;
+}
+.hero h1 em{font-style:normal;color:var(--amber);position:relative}
+.hero h1 em::after{
+  content:"";position:absolute;left:0;right:0;bottom:.06em;height:1px;
+  background:linear-gradient(90deg,var(--amber),rgba(217,164,65,.12));
+}
+.lede{margin:20px 0 0;max-width:39em;color:var(--paper-2);font-size:15px;line-height:1.8}
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px}
+.hero-note{margin:18px 0 0;color:var(--muted);font-size:12.5px;letter-spacing:.02em}
+.hero-stats{display:flex;gap:26px;margin-top:30px;flex-wrap:wrap}
+.hero-stats div{min-width:88px}
+.hero-stats b{display:block;font-family:var(--serif);font-size:26px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+.hero-stats span{color:var(--muted);font-size:12px;letter-spacing:.06em}
+
+/* 首页签名元素：阅读窗 */
+.demo-panel{
+  border:1px solid var(--line);border-radius:var(--r-lg);
+  background:
+    radial-gradient(120% 130% at 50% -20%,rgba(217,164,65,.10),transparent 60%),
+    linear-gradient(180deg,rgba(243,237,225,.045),rgba(243,237,225,0) 46%),var(--ink-2);
+  padding:18px 18px 14px;position:relative;overflow:hidden;
+}
+.demo-panel::before{
+  content:"";position:absolute;inset:0;
+  background-image:linear-gradient(90deg,rgba(243,237,225,.05) 1px,transparent 1px);
+  background-size:calc(100% / 6) 100%;opacity:.28;pointer-events:none;
+}
+.demo-head{display:flex;justify-content:space-between;align-items:center;position:relative}
+.demo-head span{font-size:11.5px;letter-spacing:.1em;color:var(--muted)}
+.demo-frame{
+  position:relative;display:grid;place-items:center;
+  height:clamp(150px,26vh,208px);margin:6px 0 0;
+}
+.demo-tick{
+  position:absolute;top:50%;width:1px;height:46%;transform:translateY(-50%);
+  background:linear-gradient(180deg,transparent,var(--amber),transparent);opacity:.55;
+}
+.demo-tick.l{left:22%}
+.demo-tick.r{right:22%}
+.demo-word{
+  position:relative;font-family:var(--serif);font-weight:600;
+  font-size:clamp(2.1rem,5.6vw,3rem);letter-spacing:.02em;
+  transition:opacity .18s var(--ease),filter .18s var(--ease);
+}
+.demo-word.fade{opacity:.25;filter:blur(.4px)}
+.demo-foot{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);
+}
+.demo-foot .wpm{font-variant-numeric:tabular-nums;letter-spacing:.08em;color:var(--paper-2)}
+
+/* ===== 四模式 ===== */
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:42px 0 22px}
+.section-head h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.3rem,2.6vw,1.55rem);margin:0;letter-spacing:.02em}
+.section-head p{margin:0;color:var(--muted);font-size:12.5px}
+.modes-grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media (min-width:620px){.modes-grid{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1080px){.modes-grid{grid-template-columns:repeat(4,1fr);gap:16px}}
+.mode-card{
+  display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-lg);
+  background:linear-gradient(180deg,rgba(243,237,225,.028),rgba(243,237,225,0) 52%),var(--ink-2);
+  overflow:hidden;transition:border-color .25s var(--ease),transform .25s var(--ease),background .25s var(--ease);
+}
+.mode-card:hover{border-color:rgba(217,164,65,.42);transform:translateY(-3px)}
+.mode-card .preview{
+  height:112px;border-bottom:1px solid var(--line);display:grid;place-items:center;
+  background:radial-gradient(90% 120% at 50% 0%,rgba(243,237,225,.05),transparent 70%);position:relative;
+}
+.mode-card p.desc{margin:0;color:var(--paper-2);font-size:13px;line-height:1.7;min-height:44px}
+.mode-card .card-body{padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px;flex:1}
+.mode-card h3{margin:0;font-family:var(--serif);font-size:16.5px;font-weight:600;letter-spacing:.02em}
+.mode-card .spec{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.mode-card .card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;border-top:1px dashed var(--line);margin-top:auto}
+.mode-card .last{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mode-card .enter{color:var(--paper);font-size:13px;border-bottom:1px solid rgba(217,164,65,.5);padding:2px 0;transition:color .2s,border-color .2s;min-height:44px;display:inline-flex;align-items:center}
+.mode-card .enter:hover{color:var(--amber);border-color:var(--amber)}
+
+/* 卡片内微型预览 */
+.mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;width:78px;height:78px}
+.mini-grid i{
+  display:grid;place-items:center;font-size:9.5px;font-style:normal;color:var(--muted);
+  border:1px solid var(--line);border-radius:2px;font-variant-numeric:tabular-nums;
+}
+.mini-grid i.on{color:#1B1408;background:var(--amber);border-color:var(--amber);font-weight:600}
+.mini-rsvp{display:grid;place-items:center;position:relative;width:100%;height:100%}
+.mini-rsvp span{font-family:var(--serif);font-size:23px;font-weight:600;letter-spacing:.06em}
+.mini-rsvp i{position:absolute;top:26%;width:1px;height:48%;background:rgba(217,164,65,.55)}
+.mini-rsvp i:first-child{left:24%}
+.mini-rsvp i:last-child{right:24%}
+.mini-pacer{display:flex;flex-direction:column;gap:6px;width:74%;align-items:center}
+.mini-pacer span{height:4px;border-radius:2px;background:rgba(243,237,225,.15);width:100%}
+.mini-pacer span:nth-child(2){background:var(--amber);width:92%;box-shadow:0 0 12px rgba(217,164,65,.35)}
+.mini-pacer span:nth-child(3){width:80%}
+.mini-pacer span:nth-child(4){width:88%}
+.mini-quiz{display:flex;flex-direction:column;gap:4px;width:80%}
+.mini-quiz span{
+  height:16px;border:1px solid var(--line);border-radius:3px;display:flex;align-items:center;gap:6px;padding:0 6px;
+  font-size:9.5px;color:var(--muted);letter-spacing:.02em;line-height:1;white-space:nowrap;overflow:hidden;
+}
+.mini-quiz span i{font-style:normal;font-size:8px;color:var(--muted);opacity:.75}
+.mini-quiz span.on{border-color:rgba(217,164,65,.62);color:var(--amber);background:rgba(217,164,65,.07)}
+.mini-quiz span.on i{color:var(--amber);opacity:.9}
+
+/* ===== 成绩页 ===== */
+.page-head{padding:46px 0 26px;border-bottom:1px solid var(--line)}
+.page-head h1{font-family:var(--serif);font-size:clamp(1.6rem,3.4vw,2rem);font-weight:600;margin:0;letter-spacing:.02em}
+.page-head p{margin:10px 0 0;color:var(--muted);font-size:13px;max-width:52em}
+.records-grid{display:grid;grid-template-columns:1fr;gap:18px;padding:26px 0 64px;align-items:start}
+@media (min-width:980px){.records-grid{grid-template-columns:repeat(2,1fr);gap:22px}}
+.record-block{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--ink-2);padding:18px 18px 8px}
+.record-block header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px}
+.record-block h3{margin:0;font-family:var(--serif);font-size:16px;font-weight:600}
+.record-block .count{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.record-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:12.5px;font-variant-numeric:tabular-nums}
+.record-table th{font-weight:400;font-size:11px;letter-spacing:.06em;color:var(--muted);text-align:left;padding:0 6px 8px;border-bottom:1px solid var(--line)}
+.record-table td{padding:9px 6px;border-bottom:1px solid rgba(243,237,225,.07);color:var(--paper-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.record-table td:first-child{color:var(--muted);font-size:11.5px}
+.record-empty{padding:22px 6px 18px;color:var(--muted);font-size:12.5px}
+.record-block .block-foot{display:flex;justify-content:flex-end;padding:6px 0 8px}
+.record-block .block-foot button{color:var(--muted);font-size:11.5px;padding:8px 10px;border-radius:6px}
+.record-block .block-foot button:hover{color:var(--red);background:rgba(196,96,78,.08)}
+
+/* ===== 训练舞台 ===== */
+.stage-wrap{max-width:1040px;margin:0 auto;padding:clamp(20px,6vh,60px) 20px 64px;min-height:calc(100vh - 70px);display:flex;flex-direction:column;justify-content:flex-start}
+.train-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:22px}
+.train-head .left{min-width:0}
+.back{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;padding:8px 0;min-height:44px}
+.back:hover{color:var(--paper)}
+.train-head h2{font-family:var(--serif);font-size:clamp(1.5rem,3vw,1.9rem);font-weight:600;margin:4px 0 0;letter-spacing:.02em}
+.train-head .meta{color:var(--muted);font-size:12px;margin-top:6px}
+.gauge{text-align:right;font-variant-numeric:tabular-nums}
+.gauge b{display:block;font-family:var(--serif);font-size:clamp(1.5rem,3.4vw,2.1rem);font-weight:600;line-height:1.1}
+.gauge span{color:var(--muted);font-size:11.5px;letter-spacing:.08em}
+
+.panel{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--ink-2);padding:18px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.panel-head h3{margin:0;font-size:13px;letter-spacing:.06em;color:var(--paper-2);font-weight:500}
+
+/* 舒尔特 */
+.schulte-wrap{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.schulte-wrap{grid-template-columns:auto 260px;align-items:start;justify-content:center;gap:30px}}
+.schulte-grid{
+  display:grid;gap:8px;width:min(68vh,520px);max-width:100%;aspect-ratio:1;margin:0 auto;
+  padding:8px;border:1px solid var(--line);border-radius:var(--r-lg);background:rgba(243,237,225,.02);
+}
+@media (max-width:899px){.schulte-grid{width:100%;max-width:none}}
+.cell{
+  display:grid;place-items:center;border:1px solid var(--line);border-radius:6px;
+  background:rgba(243,237,225,.025);font-family:var(--serif);font-weight:600;
+  font-size:clamp(15px,3.4vmin,30px);color:var(--paper);
+  font-variant-numeric:tabular-nums;transition:background .16s,border-color .16s,color .16s,transform .16s;
+  user-select:none;-webkit-tap-highlight-color:transparent;
+}
+.cell:hover{border-color:rgba(243,237,225,.3)}
+.cell.done{color:var(--muted);background:transparent;border-color:rgba(243,237,225,.07);opacity:.55}
+.cell.wrong{background:rgba(196,96,78,.28);border-color:var(--red);color:#fff;transform:scale(.96)}
+.cell.hit{background:var(--amber-soft);border-color:rgba(217,164,65,.5)}
+.side-stat{display:flex;flex-direction:column;gap:14px}
+.stat-row{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--line)}
+.stat-row span{color:var(--muted);font-size:12px}
+.stat-row b{font-family:var(--serif);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* 设置区 */
+.setup{display:grid;gap:18px;grid-template-columns:1fr}
+@media (min-width:880px){.setup{grid-template-columns:1.15fr .85fr;align-items:start}}
+.field{display:flex;flex-direction:column;gap:10px}
+.field label{font-size:12px;color:var(--muted);letter-spacing:.06em}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px}
+.seg button{padding:6px 14px;border-radius:999px;font-size:12.5px;color:var(--paper-2);min-height:34px;transition:background .18s,color .18s}
+.seg button[aria-pressed="true"]{background:rgba(217,164,65,.16);color:var(--paper)}
+.range-row{display:flex;align-items:center;gap:14px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:22px;background:transparent;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--line-2);border-radius:2px}
+input[type=range]::-moz-range-track{height:2px;background:var(--line-2);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--amber);margin-top:-6px;border:none}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--amber)}
+input[type=range]:disabled{opacity:.45;cursor:not-allowed}
+.wpm-read{font-family:var(--serif);font-size:1.15rem;font-variant-numeric:tabular-nums;min-width:96px;text-align:right}
+
+/* 文本选择 */
+.text-list{display:flex;flex-direction:column;gap:8px}
+.text-item{
+  display:grid;grid-template-columns:1fr auto;gap:4px 12px;text-align:left;width:100%;
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;background:transparent;
+  transition:border-color .2s,background .2s;
+}
+.text-item:hover{border-color:var(--line-2)}
+.text-item[aria-pressed="true"]{border-color:rgba(217,164,65,.55);background:rgba(217,164,65,.06)}
+.text-item b{font-weight:600;font-size:13.5px;letter-spacing:.02em}
+.text-item em{font-style:normal;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;align-self:center}
+.text-item small{grid-column:1/-1;color:var(--muted);font-size:11.5px;line-height:1.6}
+
+/* RSVP */
+.rsvp-stage{position:relative;border:1px solid var(--line);border-radius:var(--r-lg);background:
+  radial-gradient(70% 90% at 50% 40%,rgba(243,237,225,.055),transparent 72%),#17130F;
+  overflow:hidden}
+.rsvp-window{position:relative;display:grid;place-items:center;height:clamp(220px,42vh,360px)}
+.rsvp-word{
+  font-family:var(--serif);font-weight:600;letter-spacing:.04em;
+  font-size:clamp(1.9rem,6vw,3.5rem);line-height:1.35;text-align:center;padding:0 8%;
+  will-change:opacity;
+}
+.rsvp-word.dim{opacity:.55}
+.focal{position:absolute;top:50%;transform:translateY(-50%);width:1px;height:38%;background:linear-gradient(180deg,transparent,rgba(217,164,65,.5),transparent)}
+.focal.l{left:26%}
+.focal.r{right:26%}
+.rsvp-progress{height:2px;background:rgba(243,237,225,.1);margin:0 18px;border-radius:2px;overflow:hidden;position:relative}
+.rsvp-progress i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--amber),rgba(217,164,65,.4));transition:width .2s linear}
+.rsvp-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 18px 16px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+
+/* 节奏逐行 */
+.pacer-stage{
+  border:1px solid var(--line);border-radius:var(--r-lg);background:#17130F;
+  height:clamp(320px,58vh,560px);overflow:hidden;position:relative;scroll-behavior:smooth;
+}
+.pacer-inner{padding:calc(clamp(320px,58vh,560px) / 2 - 1.2em) 8%;transition:transform .34s var(--ease)}
+.pacer-line{
+  display:block;font-size:clamp(1rem,1.9vw,1.26rem);line-height:2.05;color:rgba(243,237,225,.34);
+  transition:color .3s,opacity .3s;padding:2px 10px;border-radius:4px;
+}
+.pacer-line.active{
+  color:var(--paper);background:rgba(217,164,65,.13);
+  box-shadow:inset 2px 0 0 var(--amber),0 0 22px rgba(217,164,65,.14);
+  text-shadow:0 0 14px rgba(217,164,65,.28);
+}
+.pacer-stage.glow .pacer-line.active{animation:pacerGlow 2.4s ease-in-out infinite}
+@keyframes pacerGlow{
+  0%,100%{box-shadow:inset 2px 0 0 var(--amber),0 0 22px rgba(217,164,65,.14);text-shadow:0 0 14px rgba(217,164,65,.26)}
+  50%{box-shadow:inset 2px 0 0 var(--amber),0 0 46px rgba(217,164,65,.36);text-shadow:0 0 30px rgba(217,164,65,.55)}
+}
+.pacer-line.passed{color:rgba(243,237,225,.22)}
+
+/* 测验 */
+.quiz-wrap{max-width:760px;margin:0 auto}
+.quiz-q{font-family:var(--serif);font-size:clamp(1.1rem,2.4vw,1.32rem);line-height:1.7;margin:0 0 18px}
+.quiz-opts{display:flex;flex-direction:column;gap:9px}
+.opt{
+  display:grid;grid-template-columns:26px 1fr;gap:10px;align-items:start;text-align:left;
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;min-height:44px;
+  transition:border-color .18s,background .18s;font-size:13.5px;color:var(--paper-2);line-height:1.65;
+}
+.opt:hover{border-color:var(--line-2);color:var(--paper)}
+.opt .idx{font-family:var(--serif);font-size:13px;color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:rgba(217,164,65,.6);background:rgba(217,164,65,.08);color:var(--paper)}
+.opt[aria-pressed="true"] .idx{color:var(--amber)}
+.opt.correct{border-color:rgba(127,164,108,.6);background:rgba(127,164,108,.1)}
+.opt.wrong{border-color:rgba(196,96,78,.6);background:rgba(196,96,78,.1)}
+.quiz-bar{display:flex;justify-content:space-between;align-items:center;margin-top:20px;gap:12px}
+.quiz-progress{display:flex;gap:5px}
+.quiz-progress i{width:16px;height:2px;background:rgba(243,237,225,.16);border-radius:2px}
+.quiz-progress i.on{background:var(--amber)}
+.quiz-progress i.done{background:rgba(243,237,225,.42)}
+
+/* 结果 */
+.result{border:1px solid var(--line);border-radius:var(--r-lg);background:
+  radial-gradient(80% 100% at 50% -10%,rgba(217,164,65,.1),transparent 60%),var(--ink-2);
+  padding:30px 24px 24px;text-align:center}
+.result .big{font-family:var(--serif);font-weight:700;font-size:clamp(2.4rem,7vw,3.6rem);line-height:1.1;font-variant-numeric:tabular-nums}
+.result .unit{color:var(--muted);font-size:12px;letter-spacing:.12em;margin-top:6px}
+.result .sub{color:var(--paper-2);font-size:13px;margin-top:10px}
+.result .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin:22px 0 18px}
+.result .grid div{background:var(--ink-2);padding:14px 10px}
+.result .grid b{display:block;font-family:var(--serif);font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.result .grid span{color:var(--muted);font-size:11px;letter-spacing:.04em}
+.result .actions{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+
+/* 摄像头 HUD */
+.hud{
+  position:fixed;right:16px;bottom:16px;z-index:35;display:none;
+  border:1px solid var(--line);border-radius:12px;background:rgba(25,22,20,.92);
+  padding:10px 12px;min-width:172px;font-size:12px;
+}
+.hud.show{display:block}
+.hud .row{display:flex;align-items:center;gap:9px;padding:3px 0}
+.hud .row .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.hud .row .label{color:var(--muted);font-size:11.5px;letter-spacing:.04em;min-width:40px}
+.hud .row .value{color:var(--paper-2);margin-left:auto;font-size:11.5px}
+.hud .row.good .dot{background:var(--green)}
+.hud .row.good .value{color:var(--paper)}
+.hud .row.warn .dot{background:var(--amber)}
+.hud .row.bad .dot{background:var(--red)}
+.hud-note{color:var(--muted);font-size:10.5px;border-top:1px solid var(--line);margin-top:7px;padding-top:7px;line-height:1.5}
+
+/* Toast */
+.toast-stack{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:50;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:min(92vw,420px)}
+.toast{
+  display:flex;align-items:center;gap:9px;border:1px solid rgba(217,164,65,.4);
+  background:rgba(28,24,20,.96);color:var(--paper);border-radius:999px;
+  padding:9px 16px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.45);
+  animation:toastIn .3s var(--ease) both;
+}
+.toast .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);flex:none}
+.toast.muted{border-color:var(--line-2);color:var(--paper-2)}
+.toast.muted .dot{background:var(--muted)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* 弹窗 */
+.modal-mask{position:fixed;inset:0;z-index:55;background:rgba(8,7,6,.72);display:grid;place-items:center;padding:20px;animation:viewIn .25s var(--ease) both}
+.modal{width:min(520px,100%);border:1px solid var(--line-2);border-radius:var(--r-lg);background:var(--ink-2);padding:26px 24px 22px;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+.modal h3{font-family:var(--serif);font-size:1.2rem;font-weight:600;margin:0 0 12px}
+.modal p{color:var(--paper-2);font-size:13px;line-height:1.8;margin:0 0 10px}
+.modal ul{margin:0 0 14px;padding-left:18px;color:var(--paper-2);font-size:13px;line-height:1.9}
+.modal .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.modal.wide{width:min(680px,100%)}
+.modal input[type=text],.modal textarea{width:100%;background:rgba(243,237,225,.03);border:1px solid var(--line-2);border-radius:8px;padding:11px 12px;color:var(--paper);font-size:14px;font-family:inherit;line-height:1.7}
+.modal textarea{resize:vertical;min-height:132px}
+.modal input[type=text]:focus,.modal textarea:focus{outline:none;border-color:rgba(217,164,65,.6);box-shadow:0 0 0 3px rgba(217,164,65,.12)}
+.ct-hint{font-size:11.5px;color:var(--muted)}
+.ct-q{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;background:rgba(243,237,225,.02)}
+.ct-q-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted)}
+.ct-opts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.ct-ans{display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.ct-q-head{display:flex;justify-content:space-between;align-items:center;margin:18px 0 8px;font-size:12px;letter-spacing:.06em;color:var(--muted)}
+.btn.mini{padding:6px 12px;min-height:34px;font-size:12.5px}
+.text-item.add{border-style:dashed;color:var(--paper-2);justify-content:center;text-align:center;align-items:center;min-height:56px}
+
+.lab-wrap{display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:900px){.lab-wrap{grid-template-columns:minmax(0,1fr) 280px;align-items:start}}
+.lab-stage{position:relative;border:1px solid var(--line);border-radius:var(--r-lg);background:#17130F;overflow:hidden;aspect-ratio:4/3;max-height:min(62vh,560px);display:grid;place-items:center}
+.lab-stage canvas{width:100%;height:100%;display:block;object-fit:contain}
+.lab-empty{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-size:13px;letter-spacing:.04em}
+.lab-stage.live .lab-empty{display:none}
+.lab-side .stat-row{padding:6px 0;font-size:13px}
+.lab-side .stat-row b{font-size:13px}
+@media (max-width:899px){.lab-side .stat-row{padding:8px 0}}
+
+@media (max-width:640px){
+  .topbar-inner{padding:11px 16px;gap:10px}
+  .nav button{padding:8px 9px;font-size:12.5px}
+  .assist-pill{padding:6px 10px;font-size:11.5px}
+  .brand b{font-size:15.5px}
+  .shell{padding:0 16px}
+  .hud{right:10px;bottom:10px;min-width:0;padding:8px 10px}
+  .result .grid{grid-template-columns:repeat(3,1fr)}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="#/home" aria-label="速读训练首页">
+      <svg viewBox="0 0 64 64" aria-hidden="true"><path d="M6 32c7-10.5 15-15 26-15s19 4.5 26 15c-7 10.5-15 15-26 15s-19-4.5-26-15z" fill="none" stroke="#F3EDE1" stroke-width="2.4" opacity=".9"/><circle cx="32" cy="32" r="7.4" fill="#D9A441"/><path d="M32 4v6M32 54v6" stroke="#F3EDE1" stroke-width="1.6" opacity=".35"/></svg>
+      <b>速读训练</b>
+      <span>四种模式 · 本机成绩</span>
+    </a>
+    <nav class="nav" aria-label="主导航">
+      <button data-go="#/home" id="navHome" aria-current="true">训练</button>
+      <button data-go="#/records" id="navRecords">成绩</button>
+      <button data-go="#/lab" id="navLab">实验室</button>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <!-- ===== 视图：首页 ===== -->
+  <section class="view is-active" id="view-home">
+    <div class="shell">
+      <div class="hero">
+        <div class="hero-copy">
+          <h1>把眼睛的速度，<br><em>练回来</em>。</h1>
+          <p class="lede">四种训练：用舒尔特方格撑开视野，用逐词快闪甩掉默读，用节奏逐行减少回跳，最后用读后测验确认——快，但没有拿理解去换。</p>
+          <div class="hero-actions">
+            <button class="btn primary" data-go="#/schulte">开始训练</button>
+            <button class="btn" data-go="#/records">看看成绩</button>
+          </div>
+          <div class="hero-stats">
+            <div><b id="statRounds">0</b><span>本机累计局数</span></div>
+            <div><b id="statBest">—</b><span>舒尔特最佳</span></div>
+            <div><b id="statAcc">—</b><span>最近测验正确率</span></div>
+          </div>
+          <p class="hero-note">成绩只保存在这台设备的浏览器里 · 镜头追踪在实验室里，不参与训练与成绩</p>
+        </div>
+        <div class="demo-panel" aria-hidden="true">
+          <div class="demo-head"><span>阅读窗预览</span><span class="wpm">300 WPM</span></div>
+          <div class="demo-frame">
+            <i class="demo-tick l"></i><i class="demo-tick r"></i>
+            <span class="demo-word" id="demoWord">专注</span>
+          </div>
+          <div class="demo-foot">
+            <span>注视点固定，词随节奏推进</span>
+            <span class="wpm" id="demoClock">0.0s</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-head">
+        <h2>四种训练</h2>
+        <p>每局结束即可看到成绩，不需要登录</p>
+      </div>
+
+      <div class="modes-grid">
+        <article class="mode-card">
+          <div class="preview">
+            <div class="mini-grid" aria-hidden="true">
+              <i>4</i><i>9</i><i>2</i><i>7</i><i class="on">1</i><i>5</i><i>8</i><i>3</i><i>6</i>
+            </div>
+          </div>
+          <div class="card-body">
+            <div><h3>舒尔特方格</h3></div>
+            <p class="desc">在乱序数字里按顺序点，训练视线不逐格扫描、用余光抓目标。</p>
+            <div class="spec">3×3 / 4×4 / 5×5 · 视野广度</div>
+            <div class="card-foot">
+              <span class="last" data-last="schulte">尚无记录</span>
+              <button class="enter" data-go="#/schulte">进入</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="mode-card">
+          <div class="preview">
+            <div class="mini-rsvp" aria-hidden="true"><i></i><i></i><span>专注</span></div>
+          </div>
+          <div class="card-body">
+            <div><h3>逐词快闪</h3></div>
+            <p class="desc">文字在固定注视点逐词闪现，逼自己放弃一字一句的默读节奏。</p>
+            <div class="spec">100–800 WPM · 单字摄入</div>
+            <div class="card-foot">
+              <span class="last" data-last="rsvp">尚无记录</span>
+              <button class="enter" data-go="#/rsvp">进入</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="mode-card">
+          <div class="preview">
+            <div class="mini-pacer" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+          </div>
+          <div class="card-body">
+            <div><h3>节奏逐行</h3></div>
+            <p class="desc">整篇按行展示，高亮行带着视线往下走，练习按节奏扫读、少回跳。</p>
+            <div class="spec">100–600 WPM · 整行扫读</div>
+            <div class="card-foot">
+              <span class="last" data-last="pacer">尚无记录</span>
+              <button class="enter" data-go="#/pacer">进入</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="mode-card">
+          <div class="preview">
+            <div class="mini-quiz" aria-hidden="true">
+              <span class="on"><i>A</i>眼睛在看什么</span><span><i>B</i>节奏与停顿</span><span><i>C</i>理解的方式</span><span><i>D</i>以上都对</span>
+            </div>
+          </div>
+          <div class="card-body">
+            <div><h3>读后测验</h3></div>
+            <p class="desc">读完立刻答五道细节与主旨题，正确率和速度同屏，看清有没有白读。</p>
+            <div class="spec">每篇 5 题 · 理解校验</div>
+            <div class="card-foot">
+              <span class="last" data-last="quiz">尚无记录</span>
+              <button class="enter" data-go="#/quiz">进入</button>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div style="height:64px"></div>
+    </div>
+  </section>
+
+  <!-- ===== 视图：训练舞台 ===== -->
+  <section class="view" id="view-stage"><div class="stage-wrap" id="stage"></div></section>
+
+  <!-- ===== 视图：成绩 ===== -->
+  <section class="view" id="view-records">
+    <div class="shell">
+      <div class="page-head">
+        <h1>成绩记录</h1>
+        <p>每局结束后自动保存，每类保留最近 200 条。数据只在本机浏览器，清空后无法恢复。</p>
+      </div>
+      <div class="records-grid" id="recordsGrid"></div>
+    </div>
+  </section>
+
+  <section class="view" id="view-lab">
+    <div class="shell">
+      <div class="page-head">
+        <h1>实验室 · 追踪验证</h1>
+        <p>研发验证用：看 MediaPipe 在这台机器上的实际判定、延迟与阈值反应。不参与训练、不写成绩、画面不上传。</p>
+      </div>
+      <div class="lab-wrap">
+        <div class="lab-stage">
+          <canvas id="labCanvas" width="640" height="480"></canvas>
+          <div class="lab-empty" id="labEmpty">镜头未开启</div>
+        </div>
+        <aside class="lab-side panel">
+          <div class="stat-row"><span>状态</span><b id="labState">关闭</b></div>
+          <div class="stat-row"><span>帧率 · 推论耗时</span><b id="labFps">—</b></div>
+          <div class="stat-row"><span>人脸 · 关键点</span><b id="labFaces">—</b></div>
+          <div class="stat-row"><span>头部 pitch / yaw</span><b id="labHead">—</b></div>
+          <div class="stat-row"><span>眼位 x / y</span><b id="labIris">—</b></div>
+          <div class="stat-row"><span>坐姿判定</span><b id="labPost">—</b></div>
+          <div class="stat-row"><span>注视判定</span><b id="labGaze">—</b></div>
+          <div class="stat-row"><span>基线</span><b id="labBase">未校准</b></div>
+          <div class="field"><label>灵敏度（影响判定阈值）</label><div class="seg" id="labSense">
+            <button data-sense="low" aria-pressed="false">低</button>
+            <button data-sense="mid" aria-pressed="true">中</button>
+            <button data-sense="high" aria-pressed="false">高</button>
+          </div></div>
+          <button class="btn primary" id="labToggle" style="width:100%">开启镜头</button>
+          <div style="display:flex;gap:8px"><button class="btn" id="labRec" style="flex:1">记录 30 秒</button><button class="btn" id="labExport" disabled style="flex:1">导出 JSON</button></div>
+          <div style="color:var(--muted);font-size:12px;line-height:1.7">记录期间每秒采样一次判定值，用于核对阈值是否合理。退出页面即停止，不落盘。</div>
+        </aside>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast-stack" id="toasts" aria-live="polite"></div>
+<div id="modalRoot"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ===== 小工具 ===== */
+const $ = (sel, root) => (root || document).querySelector(sel);
+const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+const pad2 = n => String(n).padStart(2, '0');
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function fmtClock(ms){
+  const total = Math.max(0, Math.round(ms / 100) / 10);
+  if (total < 60) return total.toFixed(1) + ' 秒';
+  const m = Math.floor(total / 60), s = Math.floor(total % 60);
+  return m + ' 分 ' + pad2(s) + ' 秒';
+}
+function fmtDate(ts){
+  const d = new Date(ts), now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const t = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  if (sameDay) return '今天 ' + t;
+  return pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + t;
+}
+
+/* ===== 存储层 ===== */
+const KEYS = {
+  schulte: 'sr.schulte.records',
+  rsvp: 'sr.rsvp.records',
+  pacer: 'sr.pacer.records',
+  quiz: 'sr.quiz.records',
+  custom: 'sr.custom.texts',
+  meta: 'sr.session.meta'
+};
+const MODE_LABEL = { schulte: '舒尔特方格', rsvp: '逐词快闪', pacer: '节奏逐行', quiz: '读后测验' };
+const CAP = 200;
+const memStore = {};
+let lsOK = true;
+try {
+  localStorage.setItem('sr.probe', '1');
+  localStorage.removeItem('sr.probe');
+} catch (e) { lsOK = false; }
+
+function rawRead(key){
+  if (!lsOK) return memStore[key] == null ? null : memStore[key];
+  try { return localStorage.getItem(key); } catch (e) { lsOK = false; return memStore[key] == null ? null : memStore[key]; }
+}
+function rawWrite(key, str){
+  memStore[key] = str;
+  if (!lsOK) return false;
+  try { localStorage.setItem(key, str); return true; } catch (e) { lsOK = false; return false; }
+}
+const Store = {
+  list(mode){
+    const raw = rawRead(KEYS[mode]);
+    if (!raw) return [];
+    try { const arr = JSON.parse(raw); return Array.isArray(arr) ? arr : []; } catch (e) { return []; }
+  },
+  add(mode, rec){
+    const arr = Store.list(mode);
+    arr.unshift(rec);
+    const cut = arr.slice(0, CAP);
+    rawWrite(KEYS[mode], JSON.stringify(cut));
+    return cut;
+  },
+  clear(mode){
+    rawWrite(KEYS[mode], '[]');
+  },
+  total(){
+    return ['schulte','rsvp','pacer','quiz'].reduce((n, m) => n + Store.list(m).length, 0);
+  },
+  meta(){
+    const raw = rawRead(KEYS.meta);
+    let obj = {};
+    if (raw) { try { obj = JSON.parse(raw) || {}; } catch (e) { obj = {}; } }
+    return Object.assign({ cameraEnabled: false, sensitivity: 'mid' }, obj);
+  },
+  setMeta(patch){
+    const m = Object.assign(Store.meta(), patch || {});
+    rawWrite(KEYS.meta, JSON.stringify(m));
+    return m;
+  }
+};
+
+/* ===== 提示与弹窗 ===== */
+let storageWarned = false;
+function toast(msg, kind){
+  const stack = $('#toasts');
+  if (!stack) return;
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind === 'muted' ? ' muted' : '');
+  el.innerHTML = '<i class="dot" aria-hidden="true"></i><span>' + esc(msg) + '</span>';
+  stack.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateY(6px)'; el.style.transition = 'opacity .3s, transform .3s'; }, 2600);
+  setTimeout(() => el.remove(), 3000);
+}
+function storageGuard(){
+  if (lsOK) return true;
+  if (!storageWarned) { storageWarned = true; toast('浏览器不允许本地存储，本轮成绩不会保存', 'muted'); }
+  return false;
+}
+
+let modalEl = null;
+function closeModal(){
+  if (modalEl) { modalEl.remove(); modalEl = null; }
+}
+function openModal(html, opts){
+  closeModal();
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.innerHTML = '<div class="modal" role="dialog" aria-modal="true">' + html + '</div>';
+  mask.addEventListener('click', ev => {
+    if (ev.target === mask) { closeModal(); if (opts && opts.onClose) opts.onClose(); }
+  });
+  $('#modalRoot').appendChild(mask);
+  modalEl = mask;
+  const focusable = mask.querySelector('button, [href], input, select, textarea');
+  if (focusable) focusable.focus();
+  const onKey = ev => {
+    if (ev.key === 'Escape') { closeModal(); document.removeEventListener('keydown', onKey); if (opts && opts.onClose) opts.onClose(); }
+  };
+  document.addEventListener('keydown', onKey);
+  return mask;
+}
+function confirmModal(title, body, okText, onOk){
+  const m = openModal(
+    '<h3>' + esc(title) + '</h3><p>' + body + '</p>' +
+    '<div class="modal-actions"><button class="btn" data-act="cancel">取消</button>' +
+    '<button class="btn primary" data-act="ok">' + esc(okText) + '</button></div>'
+  );
+  m.querySelector('[data-act="cancel"]').addEventListener('click', closeModal);
+  m.querySelector('[data-act="ok"]').addEventListener('click', () => { closeModal(); onOk(); });
+}
+
+/* ===== 内置文本与题目 ===== */
+const TEXTS = [
+  {
+    id: 't1',
+    title: '眼睛不是扫描仪',
+    chars: 311,
+    body: '眼睛并不是扫描仪，它一次只肯看清很小的一块。读一行字时，眼球其实在做快速跳动：停一下，摄取几个字，再跳到下一处。停顿的间隙极短，短到我们误以为自己看得连续、均匀。真正拖慢阅读的，往往不是眼睛，而是嘴。很多人读书时在脑子里逐字念出声音，这个动作把视觉速度压到了说话的速度。想读得更快，第一步不是让眼球转得更快，而是学会在停顿时一次抓住更多字，并允许自己在心里保持安静。所谓练视野，就是把余光当正眼用：中心负责定位，边缘负责辨认，一次能带回来的字就多了。当然，快不等于懂：眼睛跳得太远、抓不到句子的主干，理解就会漏气。好的速度，是每次停顿都能带回一点完整的意思。练习时可以先把速度调低，让眼睛习惯一次抓两三个字，再慢慢往上推。',
+    questions: [
+      { q: '文中说，读一行字时眼球在做什么？', opts: ['匀速地从左滑到右', '快速跳动，停一下摄取几个字再跳', '先看行尾再看行首', '随呼吸左右摆动'], a: 1 },
+      { q: '文中认为真正拖慢阅读的常常是什么？', opts: ['书页的排版', '光线不足', '在脑子里逐字念出声', '眼睛疲劳'], a: 2 },
+      { q: '想读得更快，作者建议的第一步是什么？', opts: ['让眼球转得更快', '换更大的字号', '在停顿时一次抓住更多字', '先读目录'], a: 2 },
+      { q: '「快不等于懂」在文中指的是？', opts: ['跳得太远抓不到句子主干，理解会漏气', '读得快的人记不住细节', '理解需要反复重读', '速度与理解无法同时提升'], a: 0 },
+      { q: '作者对「好的速度」的定义是？', opts: ['每分钟字数尽可能多', '每次停顿都能带回一点完整的意思', '不打乱呼吸节奏', '能一口气读完一篇'], a: 1 }
+    ]
+  },
+  {
+    id: 't2',
+    title: '睡眠在夜里整理白天',
+    chars: 305,
+    body: '白天经历的事，并不会自动变成记忆。人睡着以后，大脑仍在工作：它把当天零散的信息重新过一遍，挑出重要的部分，与旧的知识接上，再存到更稳的地方。这个过程在深睡阶段最活跃，而深睡多集中在前半夜。熬夜熬掉的，往往正是这一段。很多人以为少睡几小时只是困一点，第二天补回来就好；但被跳过的那段整理时间，很难用白天的补觉完整换回。规律比时长更重要：每天大致相同的入睡与起床时间，会让这套整理按时开工。反过来说，考前通宵背书，看起来多挤出了几个小时，实际却把存储的环节砍掉了大半。睡眠不足时，人也更容易被细节牵着走、抓不住整体，同一篇文章常常要多读两遍才明白。把卧室的灯调暗、把手机放到够不着的地方，也是在帮这套流程按时开始。',
+    questions: [
+      { q: '文中说，白天经历的事怎样变成记忆？', opts: ['靠反复默念', '睡着后大脑重新过一遍、挑重点、与旧知识接上', '醒来后立刻回忆一遍', '靠情绪强度自动固定'], a: 1 },
+      { q: '文中的深睡阶段多集中在什么时候？', opts: ['前半夜', '后半夜', '清晨', '午睡时'], a: 0 },
+      { q: '文中对「第二天补觉」的看法是？', opts: ['可以完整补回', '比规律作息更有效', '很难完整换回被跳过的整理时间', '只对年轻人有效'], a: 2 },
+      { q: '文中认为比睡眠时长更重要的是？', opts: ['室温', '规律', '睡姿', '枕头高度'], a: 1 },
+      { q: '作者用「考前通宵背书」说明什么？', opts: ['背书越多越好', '夜里记性最好', '挤出时间却砍掉了存储环节', '考试压力影响睡眠'], a: 2 }
+    ]
+  },
+  {
+    id: 't3',
+    title: '树荫是算出来的凉',
+    chars: 318,
+    body: '夏天的树荫不只是挡住了太阳。树叶在阳光下蒸腾，把水从叶片送进空气，这个过程要吸热，所以树下的空气确实更低。成排的行道树还会改变风：它们把掠过地面的风抬慢，让街道里的热气不那么容易堆积。城市的沥青和水泥白天吸热、夜里慢慢放，整片街区因此比郊外热，这叫热岛效应；树冠遮住地面，减少白天吸进的热量，夜里也就少放一些。所以树荫的凉，一半来自影子，一半来自水汽与风的算法。地面的材质也参与其中：浅色的墙面反射更多阳光，深色的沥青吸得更多。也正因如此，树要活着才凉：枯树遮得住光，却蒸腾不出水。新栽的树要过几年才看得出效果，因为树冠还没连成片。树冠连成片之后，遮阴与蒸腾才真正开始互相配合。这也是为什么同一片街区里，树多的那条街，夏天傍晚通常更凉。',
+    questions: [
+      { q: '按文中说法，树荫为什么更凉？', opts: ['只有遮光的作用', '叶片蒸腾吸热，加上遮光', '树根吸收了地表热量', '因为树下的空气流动更快'], a: 1 },
+      { q: '文中说成排的行道树对风做了什么？', opts: ['加快风速', '把风抬慢，减少热气堆积', '挡住所有风', '让风转向下水道'], a: 1 },
+      { q: '文中的「热岛效应」指的是？', opts: ['城市沥青水泥白天吸热夜里放热，街区比郊外热', '城市里的树木太少', '夏天市区雨水更多', '高楼挡住了风'], a: 0 },
+      { q: '「树要活着才凉」的意思是？', opts: ['树老了就不遮光', '枯树挡得住光，却蒸腾不出水', '必须多种树才有效', '只有大树才凉快'], a: 1 },
+      { q: '这篇文章主要在讲什么？', opts: ['如何给城市降温', '树荫的凉来自影子与水汽、风的共同作用', '夏天为什么要多种草', '沥青路面的施工方法'], a: 1 }
+    ]
+  }
+];
+function allTexts(){ return TEXTS.concat(Store.list('custom')); }
+function getText(id){ return allTexts().find(t => t.id === id) || null; }
+function saveCustomList(list){ rawWrite(KEYS.custom, JSON.stringify(list.slice(0, 60))); }
+function isCustom(id){ return /^c/.test(String(id || '')) && getText(id); }
+
+/* ===== 自定义文本编辑器 ===== */
+const textEditor = {
+  open(editingId, onSaved){
+    const cur = editingId ? allTexts().find(t => t.id === editingId && isCustom(t.id)) : null;
+    const m = openModal(
+      '<h3>' + (cur ? '编辑文本' : '自定义文本') + '</h3>' +
+      '<p style="margin-bottom:14px">自己找的材料也能直接练：逐词快闪、节奏逐行随即可用；想连读后测验一起练，在下面加题。</p>' +
+      '<div class="field"><label>标题</label><input type="text" id="ctTitle" maxlength="28" placeholder="给这篇起个名字" value="' + (cur ? esc(cur.title) : '') + '"></div>' +
+      '<div class="field" style="margin-top:12px"><label>正文</label><textarea id="ctBody" placeholder="粘贴或输入正文，建议 300–500 字">' + (cur ? esc(cur.body) : '') + '</textarea><div class="ct-hint" id="ctCount">0 字</div></div>' +
+      '<div class="ct-q-head"><span>读后测验题（可选，最多 5 题）</span><button class="btn mini" data-add-q>＋ 加一题</button></div>' +
+      '<div id="ctQs"></div>' +
+      '<div class="modal-actions">' +
+        (cur ? '<button class="btn" data-del>删除这篇</button>' : '') +
+        '<button class="btn" data-close>取消</button><button class="btn primary" data-save>保存</button>' +
+      '</div>'
+    );
+    m.querySelector('.modal').classList.add('wide');
+    const body = m.querySelector('#ctBody');
+    const count = m.querySelector('#ctCount');
+    const qBox = m.querySelector('#ctQs');
+    const syncCount = () => { count.textContent = body.value.trim().length + ' 字' + (body.value.trim().length >= 300 && body.value.trim().length <= 500 ? ' · 在建议区间' : ''); };
+    syncCount();
+    body.addEventListener('input', syncCount);
+
+    function qBlock(data){
+      const wrap = document.createElement('div');
+      wrap.className = 'ct-q';
+      wrap.innerHTML =
+        '<div class="ct-q-top"><span>题目</span><button class="btn mini" data-rm>移除</button></div>' +
+        '<input type="text" data-q placeholder="题干，例如：文中说……" value="' + esc(data && data.q || '') + '">' +
+        '<div class="ct-opts">' + [0,1,2,3].map(i =>
+          '<input type="text" data-o="' + i + '" placeholder="' + 'ABCD'[i] + ' 选项" value="' + esc((data && data.opts && data.opts[i]) || '') + '">').join('') + '</div>' +
+        '<div class="ct-ans"><span>正确答案</span><div class="seg" data-ans data-a="' + (data && data.a != null ? data.a : 0) + '">' +
+          [0,1,2,3].map(i => '<button type="button" data-a="' + i + '" aria-pressed="' + ((data && data.a != null ? data.a : 0) === i) + '">' + 'ABCD'[i] + '</button>').join('') +
+        '</div><button class="btn mini" data-rm style="margin-left:auto">移除这题</button></div>';
+      wrap.querySelector('[data-ans]').addEventListener('click', ev => {
+        const b = ev.target.closest('[data-a]'); if (!b) return;
+        const seg = b.parentElement;
+        seg.setAttribute('data-a', b.getAttribute('data-a'));
+        seg.querySelectorAll('[data-a]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+      });
+      wrap.querySelectorAll('[data-rm]').forEach(btn => btn.addEventListener('click', () => {
+        wrap.remove();
+        if (!qBox.children.length && !m.querySelector('[data-add-q]').disabled) {}
+      }));
+      return wrap;
+    }
+    const addQ = m.querySelector('[data-add-q]');
+    addQ.addEventListener('click', () => {
+      if (qBox.children.length >= 5) { toast('最多 5 题', 'muted'); return; }
+      qBox.appendChild(qBlock(null));
+    });
+    (cur && cur.questions ? cur.questions : []).slice(0, 5).forEach(q => qBox.appendChild(qBlock(q)));
+
+    m.querySelector('[data-close]').addEventListener('click', closeModal);
+    const del = m.querySelector('[data-del]');
+    if (del) del.addEventListener('click', () => {
+      confirmModal('删除这篇文本', '删除后这篇的正文与题目都不再可用，已存的成绩记录不受影响。', '删除', () => {
+        saveCustomList(allTexts().filter(t => t.id !== cur.id));
+        toast('已删除《' + cur.title + '》', 'muted');
+        if (onSaved) onSaved(null);
+      });
+    });
+    m.querySelector('[data-save]').addEventListener('click', () => {
+      const title = m.querySelector('#ctTitle').value.trim();
+      const text = body.value.replace(/\s+\n/g, '\n').trim();
+      if (!title) { toast('先给这篇起个标题', 'muted'); return; }
+      if (text.length < 60) { toast('正文太短，至少写 60 字再练', 'muted'); return; }
+      const qs = [];
+      $$('.ct-q', m).forEach(el => {
+        const q = el.querySelector('[data-q]').value.trim();
+        const opts = [0,1,2,3].map(i => el.querySelector('[data-o="' + i + '"]').value.trim());
+        if (!q || opts.some(o => !o)) return;
+        qs.push({ q: q, opts: opts, a: parseInt(el.querySelector('[data-ans]').getAttribute('data-a') || '0', 10) });
+      });
+      const rec = { id: cur ? cur.id : 'c' + Date.now(), title: title, body: text, chars: text.length, questions: qs, date: Date.now() };
+      let list = allTexts().filter(t => !isCustom(t.id));
+      const customs = Store.list('custom').filter(t => t.id !== rec.id);
+      saveCustomList([rec].concat(customs));
+      closeModal();
+      toast('已保存《' + rec.title + '》' + (qs.length ? '，含 ' + qs.length + ' 道题' : '，暂无题目'), 'muted');
+      if (onSaved) onSaved(rec.id);
+    });
+  }
+};
+
+function textLabel(id){
+  const t = getText(id);
+  if (!t) return '内置文本';
+  return '《' + t.title + '》';
+}
+
+/* ===== 路由 ===== */
+const views = { home: $('#view-home'), stage: $('#view-stage'), records: $('#view-records'), lab: $('#view-lab') };
+const ROUTABLE = ['home','schulte','rsvp','pacer','quiz','records','lab'];
+
+function setView(name){
+  Object.keys(views).forEach(k => views[k].classList.toggle('is-active', k === name));
+  $('#navHome').setAttribute('aria-current', name === 'home' || name === 'schulte' || name === 'rsvp' || name === 'pacer' || name === 'quiz' ? 'true' : 'false');
+  $('#navRecords').setAttribute('aria-current', name === 'records' ? 'true' : 'false');
+  const navLab = $('#navLab'); if (navLab) navLab.setAttribute('aria-current', name === 'lab' ? 'true' : 'false');
+}
+function go(hash){
+  if (location.hash === hash) { render(); return; }
+  location.hash = hash;
+}
+function parseHash(){
+  const h = (location.hash || '#/home').replace(/^#/, '');
+  const qIndex = h.indexOf('?');
+  const path = (qIndex >= 0 ? h.slice(0, qIndex) : h).replace(/^\//, '');
+  const query = qIndex >= 0 ? h.slice(qIndex + 1) : '';
+  const params = {};
+  query.split('&').forEach(pair => {
+    if (!pair) return;
+    const [k, v] = pair.split('=');
+    params[decodeURIComponent(k)] = decodeURIComponent(v || '');
+  });
+  return { path: path || 'home', params };
+}
+
+function render(){
+  const { path, params } = parseHash();
+  const route = ROUTABLE.indexOf(path) >= 0 ? path : 'home';
+  if (route === 'home') { setView('home'); renderHome(); }
+  else if (route === 'records') { setView('records'); renderRecords(); }
+  else if (route === 'lab') { setView('lab'); if (window.SR.labRender) window.SR.labRender(); }
+  else { setView('stage'); window.SR.Train.open(route, params); }
+  window.scrollTo({ top: 0, behavior: 'auto' });
+}
+window.addEventListener('hashchange', render);
+
+/* ===== 首页数据 ===== */
+function renderHome(){
+  $('#statRounds').textContent = Store.total();
+  const sch = Store.list('schulte');
+  const best = sch.reduce((min, r) => (r.timeMs && (!min || r.timeMs < min)) ? r.timeMs : min, 0);
+  $('#statBest').textContent = best ? fmtClock(best).replace(' 秒', 's').replace(' 分 ', ':') : '—';
+  const qz = Store.list('quiz');
+  let acc = '—';
+  if (qz.length && qz[0].total) acc = Math.round((qz[0].correct / qz[0].total) * 100) + '%';
+  $('#statAcc').textContent = acc;
+
+  $$('[data-last]').forEach(el => {
+    const mode = el.getAttribute('data-last');
+    const list = Store.list(mode);
+    if (!list.length) { el.textContent = '尚无记录'; return; }
+    const r = list[0];
+    if (mode === 'schulte') el.textContent = r.size + '×' + r.size + ' · ' + fmtClock(r.timeMs) + ' · 错 ' + r.errorCount;
+    else if (mode === 'rsvp') el.textContent = r.wpm + ' WPM · 已读 ' + r.charCount + ' 字';
+    else if (mode === 'pacer') el.textContent = r.wpm + ' WPM · 完成 ' + Math.round(r.completionRate * 100) + '%';
+    else el.textContent = r.total ? (Math.round((r.correct / r.total) * 100) + '% · ' + r.correct + '/' + r.total) : '—';
+  });
+
+  if (window.SR && window.SR.refreshAssist) window.SR.refreshAssist();
+}
+
+/* ===== 成绩页 ===== */
+const RECORD_COLS = {
+  schulte: [{ w: '34%', t: '时间' }, { w: '20%', t: '规格' }, { w: '26%', t: '用时' }, { w: '20%', t: '错误' }],
+  rsvp: [{ w: '30%', t: '时间' }, { w: '22%', t: '速度' }, { w: '26%', t: '已读' }, { w: '22%', t: '专注' }],
+  pacer: [{ w: '30%', t: '时间' }, { w: '22%', t: '速度' }, { w: '24%', t: '完成' }, { w: '24%', t: '时长' }],
+  quiz: [{ w: '30%', t: '时间' }, { w: '28%', t: '文本' }, { w: '24%', t: '正确率' }, { w: '18%', t: '速度' }]
+};
+function recordCells(mode, r){
+  if (mode === 'schulte') return [fmtDate(r.date), r.size + '×' + r.size, fmtClock(r.timeMs), '错误 ' + r.errorCount];
+  if (mode === 'rsvp') return [fmtDate(r.date), r.wpm + ' WPM', r.charCount + ' 字 / ' + fmtClock(r.durationMs), r.followRate == null ? '—' : Math.round(r.followRate) + '%'];
+  if (mode === 'pacer') return [fmtDate(r.date), r.wpm + ' WPM', Math.round(r.completionRate * 100) + '%', fmtClock(r.durationMs)];
+  return [fmtDate(r.date), textLabel(r.textId), Math.round(((r.correct || 0) / (r.total || 5)) * 100) + '%（' + r.correct + '/' + r.total + '）', r.readingWpm ? r.readingWpm + ' WPM' : '独立'];
+}
+function renderRecords(){
+  const grid = $('#recordsGrid');
+  grid.innerHTML = ['schulte','rsvp','pacer','quiz'].map(mode => {
+    const cols = RECORD_COLS[mode];
+    const list = Store.list(mode).slice(0, 12);
+    const colgroup = '<colgroup>' + cols.map(c => '<col style="width:' + c.w + '">').join('') + '</colgroup>';
+    const head = '<thead><tr>' + cols.map(c => '<th>' + c.t + '</th>').join('') + '</tr></thead>';
+    const body = list.length
+      ? '<tbody>' + list.map(r => '<tr>' + recordCells(mode, r).map(v => '<td title="' + esc(v) + '">' + esc(v) + '</td>').join('') + '</tr>').join('') + '</tbody>'
+      : '';
+    return '<article class="record-block">' +
+      '<header><h3>' + MODE_LABEL[mode] + '</h3><span class="count">' + Store.list(mode).length + ' / ' + CAP + ' 条</span></header>' +
+      (list.length
+        ? '<table class="record-table">' + colgroup + head + body + '</table>'
+        : '<div class="record-empty">还没有记录，练一局就会出现在这里。</div>') +
+      '<div class="block-foot"><button data-clear="' + mode + '"' + (list.length ? '' : ' disabled') + '>清空这类记录</button></div>' +
+      '</article>';
+  }).join('');
+
+  $$('[data-clear]', grid).forEach(btn => {
+    btn.addEventListener('click', () => {
+      const mode = btn.getAttribute('data-clear');
+      confirmModal('清空' + MODE_LABEL[mode] + '记录？', '这一类成绩会全部删除，无法恢复。其他模式的记录不受影响。', '确认清空', () => {
+        Store.clear(mode);
+        renderRecords();
+        toast('已清空' + MODE_LABEL[mode] + '记录', 'muted');
+      });
+    });
+  });
+}
+
+/* 跨模块共享 */
+window.SR = {
+  Store, go, render, toast, storageGuard, confirmModal, closeModal, openModal,
+  fmtClock, fmtDate, clamp, esc, TEXTS, getText, textLabel, MODE_LABEL, CAP, setView,
+  allTexts, isCustom, textEditor
+};
+})();
+</script>
+<script>
+(function(){
+'use strict';
+const SR = window.SR;
+const { Store, go, toast, storageGuard, confirmModal, fmtClock, clamp, esc, TEXTS, getText, textLabel, allTexts, isCustom, textEditor } = SR;
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+/* ===== 训练舞台 ===== */
+const stageEl = $('#stage');
+const Train = {
+  current: null,
+  open(mode, params){
+    if (Train.current && Train.current.destroy) { try { Train.current.destroy(); } catch (e) {} }
+    Train.current = null;
+    stageEl.innerHTML = '';
+    const builder = (window.SR.trainers || {})[mode];
+    if (!builder) return;
+    Train.current = builder(params || {});
+  }
+};
+function headBlock(title, meta){
+  return '<div class="train-head"><div class="left">' +
+    '<button class="back" data-back>返回</button>' +
+    '<h2>' + title + '</h2><div class="meta">' + meta + '</div></div>' +
+    '<div class="gauge" id="gauge"><b>0.0</b><span>秒</span></div></div>';
+}
+function bindBack(root){
+  $$('[data-back]', root).forEach(b => b.addEventListener('click', () => go('#/home')));
+}
+function setGauge(text, unit){
+  const g = $('#gauge');
+  if (!g) return;
+  g.innerHTML = '<b>' + text + '</b><span>' + (unit || '') + '</span>';
+}
+function setGaugeMs(ms){
+  const s = Math.round(ms / 100) / 10;
+  if (s < 60) { setGauge(s.toFixed(1), '秒用时'); return; }
+  const m = Math.floor(s / 60);
+  const rest = Math.floor(s % 60);
+  setGauge(m + ':' + (rest < 10 ? '0' : '') + rest, '分用时');
+}
+function resultCard(cfg){
+  const stats = cfg.stats.map(s => '<div><b>' + s.v + '</b><span>' + s.k + '</span></div>').join('');
+  return '<div class="result" style="max-width:620px;margin:26px auto 0">' +
+    '<div class="big">' + cfg.big + '</div>' +
+    '<div class="unit">' + cfg.unit + '</div>' +
+    (cfg.sub ? '<div class="sub">' + cfg.sub + '</div>' : '') +
+    (stats ? '<div class="grid">' + stats + '</div>' : '') +
+    '<div class="actions" id="resultActions"></div></div>';
+}
+function resultActions(list){
+  const box = $('#resultActions');
+  if (!box) return;
+  list.forEach(a => {
+    const b = document.createElement('button');
+    b.className = 'btn' + (a.primary ? ' primary' : '');
+    b.textContent = a.label;
+    b.addEventListener('click', a.onClick);
+    box.appendChild(b);
+  });
+}
+function saveRecord(mode, rec){
+  storageGuard();
+  Store.add(mode, rec);
+}
+function followRateNow(){
+  if (typeof Assist === 'undefined' || !Assist.isOn()) return null;
+  const stats = Assist.roundStats();
+  return stats && stats.totalMs > 2000 ? Math.round(stats.rate * 100) : null;
+}
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i]; a[i] = a[j]; a[j] = t;
+  }
+  return a;
+}
+function fmtWpm(v){ return String(v) + ' WPM'; }
+
+/* ===== 模式一：舒尔特方格 ===== */
+function buildSchulte(params){
+  const size = params.size ? parseInt(params.size, 10) : 5;
+  const valid = [3,4,5].indexOf(size) >= 0 ? size : 5;
+  let n = valid;
+  let started = false, startTs = 0, timerId = 0, next = 1, errors = 0, finished = false;
+
+  stageEl.innerHTML = headBlock('舒尔特方格', '按顺序点击数字，第一次点击开始计时') +
+    '<div class="schulte-wrap"><div id="gridBox"></div>' +
+    '<aside class="side-stat panel">' +
+      '<div class="field"><label>方格规格</label><div class="seg" id="sizeSeg">' +
+        [3,4,5].map(s => '<button data-size="' + s + '" aria-pressed="' + (s === valid) + '">' + s + '×' + s + '</button>').join('') +
+      '</div></div>' +
+      '<div class="stat-row"><span>下一个</span><b id="nextNum">1</b></div>' +
+      '<div class="stat-row"><span>错误</span><b id="errNum">0</b></div>' +
+      '<div class="stat-row"><span>进度</span><b id="progNum">0 / ' + (n * n) + '</b></div>' +
+      '<button class="btn primary" id="restart" style="width:100%">重新开始</button>' +
+      '<div style="color:var(--muted);font-size:12px;line-height:1.7">点错不扣分、不中断，错误格会短暂标红。视线尽量停在中心，用余光找数字。</div>' +
+    '</aside></div>';
+
+  bindBack(stageEl);
+  setGauge('0.0', '秒');
+
+  const gridBox = $('#gridBox');
+
+  function paint(){
+    const nums = shuffle(Array.from({length: n * n}, (_, i) => i + 1));
+    const grid = document.createElement('div');
+    grid.className = 'schulte-grid';
+    grid.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+    nums.forEach(v => {
+      const cell = document.createElement('button');
+      cell.className = 'cell';
+      cell.type = 'button';
+      cell.textContent = v;
+      cell.dataset.v = v;
+      grid.appendChild(cell);
+    });
+    gridBox.innerHTML = '';
+    gridBox.appendChild(grid);
+    $('#progNum').textContent = '0 / ' + (n * n);
+    $('#nextNum').textContent = '1';
+    $('#errNum').textContent = '0';
+  }
+
+  function tick(){
+    if (!started) return;
+    setGaugeMs(Date.now() - startTs);
+    timerId = requestAnimationFrame(tick);
+  }
+
+  function finish(){
+    finished = true;
+    started = false;
+    cancelAnimationFrame(timerId);
+    const timeMs = Date.now() - startTs;
+    const followRate = followRateNow();
+    const rec = { size: n, timeMs: timeMs, errorCount: errors, date: Date.now() };
+    if (followRate != null) rec.followRate = followRate;
+    saveRecord('schulte', rec);
+    setGaugeMs(timeMs);
+    gridBox.innerHTML = resultCard({
+      big: fmtClock(timeMs),
+      unit: n + '×' + n + ' 用时',
+      sub: errors ? '错点 ' + errors + ' 次，未影响计时' : '全程没有点错',
+      stats: [
+        { k: '方格', v: n + '×' + n },
+        { k: '错误', v: errors },
+        { k: '每个数字', v: (timeMs / (n * n) / 1000).toFixed(2) + 's' }
+      ]
+    });
+    resultActions([
+      { label: '再来一局', primary: true, onClick: () => Train.open('schulte', { size: n }) },
+      { label: '去做读后测验', onClick: () => go('#/quiz') },
+      { label: '查看成绩', onClick: () => go('#/records') }
+    ]);
+    if (typeof Assist !== 'undefined') Assist.endRound();
+  }
+
+  gridBox.addEventListener('click', ev => {
+    const cell = ev.target.closest('.cell');
+    if (!cell || finished) return;
+    const v = parseInt(cell.dataset.v, 10);
+    if (!started) {
+      started = true;
+      startTs = Date.now();
+      if (typeof Assist !== 'undefined') Assist.startRound('schulte');
+      tick();
+    }
+    if (v === next) {
+      cell.classList.add('done', 'hit');
+      setTimeout(() => cell.classList.remove('hit'), 240);
+      cell.disabled = false;
+      next += 1;
+      $('#nextNum').textContent = next > n * n ? '完成' : next;
+      $('#progNum').textContent = Math.min(next - 1, n * n) + ' / ' + (n * n);
+      if (next > n * n) finish();
+    } else {
+      errors += 1;
+      $('#errNum').textContent = errors;
+      cell.classList.add('wrong');
+      setTimeout(() => cell.classList.remove('wrong'), 320);
+    }
+  });
+
+  $('#sizeSeg').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-size]');
+    if (!b) return;
+    const s = parseInt(b.getAttribute('data-size'), 10);
+    if (s === n) return;
+    n = s;
+    $$('#sizeSeg button').forEach(x => x.setAttribute('aria-pressed', String(parseInt(x.getAttribute('data-size'), 10) === n)));
+    started = false; finished = false; next = 1; errors = 0; startTs = 0;
+    cancelAnimationFrame(timerId);
+    setGauge('0.0', '秒');
+    paint();
+  });
+
+  $('#restart').addEventListener('click', () => {
+    started = false; finished = false; next = 1; errors = 0;
+    cancelAnimationFrame(timerId);
+    setGauge('0.0', '秒');
+    paint();
+  });
+
+  paint();
+  return { destroy(){ cancelAnimationFrame(timerId); } };
+}
+
+/* ===== 模式二：RSVP 逐词快闪 ===== */
+function tokenize(text, size){
+  if (typeof Intl !== 'undefined' && Intl.Segmenter) {
+    try {
+      const seg = new Intl.Segmenter('zh-Hans', { granularity: 'word' });
+      const out = [];
+      for (const part of seg.segment(text)) {
+        const w = part.segment;
+        if (!w.trim()) continue;
+        if (/^[，。、；：！？…—·]+$/.test(w) && out.length) out[out.length - 1] += w;
+        else out.push(w);
+      }
+      if (out.length) return out;
+    } catch (e) {/* 回退到定长切分 */}
+  }
+  const clauses = text.split(/(?<=[，。、；：！？])/);
+  const tokens = [];
+  clauses.forEach(cl => {
+    const s = cl.trim();
+    if (!s) return;
+    for (let i = 0; i < s.length; i += size) tokens.push(s.slice(i, i + size));
+  });
+  return tokens;
+}
+function buildRsvp(params){
+  const meta = Store.meta();
+  const lastWpm = clamp(parseInt(params.wpm || meta.lastRsvpWpm || 300, 10), 100, 800);
+  let textId = getText(params.text) ? params.text : (getText(meta.lastText) ? meta.lastText : TEXTS[0].id);
+  let wpm = lastWpm;
+  let token = null;
+  let timer = 0, paused = false, playing = false, started = false;
+  let index = 0, tokens = [], charsDone = 0, totalChars = 0;
+  let activeMs = 0, segStart = 0, finished = false;
+  let onKey = null;
+
+  stageEl.innerHTML = headBlock('逐词快闪', '注视点固定，文字逐词推进；切到后台会自动暂停') + '<div id="rsvpBody"></div>';
+  bindBack(stageEl);
+  setGauge('300', 'WPM');
+
+  function setupView(){
+    stageEl.querySelector('#rsvpBody').innerHTML =
+      '<div class="setup">' +
+        '<div class="panel"><div class="panel-head"><h3>选择练习文本</h3><span style="font-size:11.5px;color:var(--muted)">300–500 字 · 各配 5 道题</span></div>' +
+          '<div class="text-list" id="textList">' + allTexts().map(t =>
+            '<button class="text-item" data-text="' + t.id + '" aria-pressed="' + (t.id === textId) + '"><b>' + esc(t.title) + '</b><em>' + t.body.length + ' 字' + (isCustom(t.id) ? ' · 自定义' : '') + '</em><small>' + esc(t.body.slice(0, 46)) + '…</small></button>'
+          ).join('') + '<button class="text-item add" data-add-text>＋ 自定义文本</button></div></div>' +
+        '<div class="panel" style="display:flex;flex-direction:column;gap:18px">' +
+          '<div class="field"><label>阅读速度</label>' +
+            '<div class="range-row"><input type="range" id="wpmRange" min="100" max="800" step="50" value="' + wpm + '"><span class="wpm-read" id="wpmRead">' + wpm + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;color:var(--muted);font-size:11px"><span>100 · 慢读</span><span>800 · 快闪</span></div>' +
+          '</div>' +
+          '<div class="stat-row"><span>每词停留</span><b id="perWord">' + Math.round(2 / wpm * 60000) + ' ms</b></div>' +
+          '<div class="stat-row"><span>预计时长</span><b id="estTime">—</b></div>' +
+          '<button class="btn primary" id="startRsvp" style="width:100%">开始阅读</button>' +
+          '<div style="color:var(--muted);font-size:12px;line-height:1.75">读完后直接进入对应文本的读后测验，正确率会与这次速度一起记录。</div>' +
+        '</div>' +
+      '</div>';
+    $('#wpmRange').addEventListener('input', ev => {
+      wpm = parseInt(ev.target.value, 10);
+      $('#wpmRead').textContent = wpm;
+      $('#perWord').textContent = Math.round(2 / wpm * 60000) + ' ms';
+      updateEstimate();
+    });
+    $$('#textList [data-text]').forEach(btn => btn.addEventListener('click', () => {
+      textId = btn.getAttribute('data-text');
+      $$('#textList [data-text]').forEach(x => x.setAttribute('aria-pressed', String(x.getAttribute('data-text') === textId)));
+      updateEstimate();
+    }));
+    const addText = $('#textList [data-add-text]');
+    if (addText) addText.addEventListener('click', () => textEditor.open(null, id => { if (id) window.SR.go('#/rsvp?text=' + id); }));
+    $('#startRsvp').addEventListener('click', startPlay);
+    updateEstimate();
+  }
+  function currentText(){ return getText(textId) || TEXTS[0]; }
+  function updateEstimate(){
+    const t = currentText();
+    tokens = tokenize(t.body, 2);
+    totalChars = t.body.length;
+    const ms = tokens.reduce((sum, tk) => sum + tk.length / wpm * 60000, 0);
+    $('#estTime').textContent = fmtClock(ms);
+    $('#perWord').textContent = Math.round(2 / wpm * 60000) + ' ms';
+  }
+
+  function playView(){
+    stageEl.querySelector('#rsvpBody').innerHTML =
+      '<div class="rsvp-stage"><div class="rsvp-window"><i class="focal l"></i><i class="focal r"></i>' +
+        '<div class="rsvp-word" id="wordBox">准备</div></div>' +
+        '<div class="rsvp-progress"><i id="progBar"></i></div>' +
+        '<div class="rsvp-foot"><span id="footLeft">0 字</span><span id="footRight">' + fmtWpm(wpm) + '</span></div></div>' +
+      '<div class="controls"><button class="btn" id="togglePlay">暂停</button><button class="btn" id="stopPlay">终止</button>' +
+      '<span style="color:var(--muted);font-size:12px;align-self:center">空格键可暂停 / 继续</span></div>';
+    $('#togglePlay').addEventListener('click', togglePause);
+    $('#stopPlay').addEventListener('click', () => settle(false));
+    if (onKey) document.removeEventListener('keydown', onKey);
+    onKey = ev => {
+      if (ev.code === 'Space') { ev.preventDefault(); togglePause(); }
+    };
+    document.addEventListener('keydown', onKey);
+    if (typeof Assist !== 'undefined') Assist.startRound('rsvp');
+  }
+
+  function draw(){
+    const box = $('#wordBox');
+    if (!box) return;
+    box.textContent = tokens[index] || '';
+    const pct = totalChars ? Math.round(charsDone / totalChars * 100) : 0;
+    const bar = $('#progBar');
+    if (bar) bar.style.width = pct + '%';
+    const left = $('#footLeft');
+    if (left) left.textContent = charsDone + ' 字 · ' + pct + '%';
+  }
+
+  function step(){
+    if (paused || !playing) return;
+    if (index >= tokens.length) { settle(true); return; }
+    draw();
+    const tk = tokens[index];
+    charsDone += tk.length;
+    index += 1;
+    const wait = Math.max(40, tk.length / wpm * 60000);
+    timer = setTimeout(step, wait);
+  }
+
+  function startPlay(){
+    playing = true; paused = false; started = true; finished = false;
+    index = 0; charsDone = 0; activeMs = 0; segStart = Date.now();
+    Store.setMeta({ lastRsvpWpm: wpm, lastText: textId });
+    playView();
+    step();
+  }
+
+  function togglePause(){
+    if (!playing || finished) return;
+    paused = !paused;
+    const btn = $('#togglePlay');
+    if (paused) {
+      clearTimeout(timer);
+      activeMs += Date.now() - segStart;
+      if (btn) btn.textContent = '继续';
+      const box = $('#wordBox');
+      if (box) box.classList.add('dim');
+    } else {
+      segStart = Date.now();
+      if (btn) btn.textContent = '暂停';
+      const box = $('#wordBox');
+      if (box) box.classList.remove('dim');
+      step();
+    }
+  }
+
+  function settle(completed){
+    if (finished) return;
+    finished = true;
+    playing = false;
+    clearTimeout(timer);
+    if (!paused) activeMs += Date.now() - segStart;
+    document.removeEventListener('keydown', onKey);
+    const durationMs = Math.max(400, activeMs);
+    const readChars = Math.min(charsDone, totalChars);
+    const actualWpm = Math.round(readChars / (durationMs / 60000));
+    const followRate = followRateNow();
+    const rec = { textId: textId, wpm: wpm, charCount: readChars, durationMs: durationMs, date: Date.now() };
+    if (followRate != null) rec.followRate = followRate;
+    saveRecord('rsvp', rec);
+
+    stageEl.querySelector('#rsvpBody').innerHTML = resultCard({
+      big: completed ? fmtClock(durationMs) : Math.round(readChars / totalChars * 100) + '%',
+      unit: completed ? '读完用时' : '已读比例',
+      sub: '设定 ' + fmtWpm(wpm) + ' · 实际约 ' + fmtWpm(actualWpm) + (completed ? '' : ' · 中途终止按已读字数结算'),
+      stats: [
+        { k: '已读字数', v: readChars + ' / ' + totalChars },
+        { k: '实测速度', v: actualWpm + ' WPM' },
+        { k: '专注占比', v: followRate == null ? '未开启' : followRate + '%' }
+      ]
+    });
+    const actions = [
+      { label: '去读后测验', primary: completed, onClick: () => go('#/quiz?text=' + textId + '&wpm=' + wpm) },
+      { label: '再读一遍', primary: !completed, onClick: () => Train.open('rsvp', { wpm: wpm, text: textId }) },
+      { label: '查看成绩', onClick: () => go('#/records') }
+    ];
+    resultActions(actions);
+    if (typeof Assist !== 'undefined') Assist.endRound();
+  }
+
+  const onVis = () => {
+    if (document.hidden && playing && !paused) togglePause();
+  };
+  document.addEventListener('visibilitychange', onVis);
+
+  setupView();
+  return {
+    destroy(){
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVis);
+      if (onKey) document.removeEventListener('keydown', onKey);
+      if (playing && !finished && typeof Assist !== 'undefined') Assist.endRound();
+    }
+  };
+}
+
+/* 训练模块对外共享 */
+SR.Train = Train;
+window.SR.trainers = Object.assign(window.SR.trainers || {}, { schulte: buildSchulte, rsvp: buildRsvp });
+SR.trainKit = { stageEl, headBlock, bindBack, setGauge, setGaugeMs, resultCard, resultActions, saveRecord, followRateNow, shuffle, fmtWpm, tokenize };
+})();
+</script>
+<script>
+(function(){
+'use strict';
+const SR = window.SR;
+const { Store, go, fmtClock, clamp, esc, TEXTS, getText, textLabel, confirmModal, allTexts, isCustom, textEditor } = SR;
+const { stageEl, headBlock, bindBack, setGauge, setGaugeMs, resultCard, resultActions, saveRecord, followRateNow, fmtWpm } = SR.trainKit;
+const Train = SR.Train;
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+function toLines(text, maxLen){
+  const clauses = text.split(/(?<=[，。、；：！？])/);
+  const lines = [];
+  let cur = '';
+  clauses.forEach(cl => {
+    if ((cur + cl).length <= maxLen) { cur += cl; return; }
+    if (cur) { lines.push(cur); cur = ''; }
+    let rest = cl;
+    while (rest.length > maxLen) { lines.push(rest.slice(0, maxLen)); rest = rest.slice(maxLen); }
+    cur = rest;
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+/* ===== 模式三：节奏逐行 ===== */
+function buildPacer(params){
+  const meta = Store.meta();
+  let textId = getText(params.text) ? params.text : (getText(meta.lastText) ? meta.lastText : TEXTS[0].id);
+  let wpm = clamp(parseInt(params.wpm || meta.lastPacerWpm || 300, 10), 100, 600);
+  let playing = false, paused = false, finished = false;
+  let lines = [], idx = 0, timer = 0;
+  let activeMs = 0, segStart = 0, maxIdx = 0;
+  let lineheights = [];
+  let onKey = null;
+
+  stageEl.innerHTML = headBlock('节奏逐行', '高亮行按设定节奏下移，读完显示完成率') + '<div id="pacerBody"></div>';
+  bindBack(stageEl);
+  setGauge(String(wpm), 'WPM');
+
+  function currentText(){ return getText(textId) || TEXTS[0]; }
+
+  function setupView(){
+    $('#pacerBody').innerHTML =
+      '<div class="setup">' +
+        '<div class="panel"><div class="panel-head"><h3>选择练习文本</h3><span style="font-size:11.5px;color:var(--muted)">按行展示 · 可暂停</span></div>' +
+          '<div class="text-list" id="textList">' + allTexts().map(t =>
+            '<button class="text-item" data-text="' + t.id + '" aria-pressed="' + (t.id === textId) + '"><b>' + esc(t.title) + '</b><em>' + t.body.length + ' 字' + (isCustom(t.id) ? ' · 自定义' : '') + '</em><small>' + esc(t.body.slice(0, 46)) + '…</small></button>'
+          ).join('') + '<button class="text-item add" data-add-text>＋ 自定义文本</button></div></div>' +
+        '<div class="panel" style="display:flex;flex-direction:column;gap:18px">' +
+          '<div class="field"><label>推进速度</label>' +
+            '<div class="range-row"><input type="range" id="paceRange" min="100" max="600" step="50" value="' + wpm + '"><span class="wpm-read" id="paceRead">' + wpm + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;color:var(--muted);font-size:11px"><span>100 · 细读</span><span>600 · 扫读</span></div>' +
+          '</div>' +
+          '<div class="stat-row"><span>分行</span><b id="lineCount">—</b></div>' +
+          '<div class="stat-row"><span>每行停留</span><b id="perLine">—</b></div>' +
+          '<div class="stat-row"><span>预计时长</span><b id="paceEst">—</b></div>' +
+          '<button class="btn primary" id="startPacer" style="width:100%">开始逐行</button>' +
+          '<div style="color:var(--muted);font-size:12px;line-height:1.75">读完后可直接进入对应文本的读后测验，比较速度与理解。</div>' +
+        '</div></div>';
+    $('#paceRange').addEventListener('input', ev => {
+      wpm = parseInt(ev.target.value, 10);
+      $('#paceRead').textContent = wpm;
+      updateEstimate();
+    });
+    $$('#textList [data-text]').forEach(btn => btn.addEventListener('click', () => {
+      textId = btn.getAttribute('data-text');
+      $$('#textList [data-text]').forEach(x => x.setAttribute('aria-pressed', String(x.getAttribute('data-text') === textId)));
+      updateEstimate();
+    }));
+    const addText = $('#textList [data-add-text]');
+    if (addText) addText.addEventListener('click', () => textEditor.open(null, id => { if (id) window.SR.go('#/pacer?text=' + id); }));
+    $('#startPacer').addEventListener('click', startPlay);
+    updateEstimate();
+  }
+  function updateEstimate(){
+    const t = currentText();
+    lines = toLines(t.body, 26);
+    $('#lineCount').textContent = lines.length + ' 行';
+    const avg = Math.round(lines.reduce((s, l) => s + l.length, 0) / lines.length);
+    $('#perLine').textContent = Math.round(avg / wpm * 60000 / 100) / 10 + ' 秒';
+    const total = lines.reduce((s, l) => s + l.length / wpm * 60000, 0);
+    $('#paceEst').textContent = fmtClock(total);
+    setGauge(String(wpm), 'WPM');
+  }
+
+  function playView(){
+    $('#pacerBody').innerHTML =
+      '<div class="pacer-stage' + (Store.meta().glow === false ? '' : ' glow') + '" id="pacerStage"><div class="pacer-inner" id="pacerInner"></div></div>' +
+      '<div class="controls"><button class="btn" id="paceToggle">暂停</button><button class="btn" id="paceStop">终止</button>' +
+      '<button class="btn mini" id="glowToggle" aria-pressed="' + (Store.meta().glow === false ? 'false' : 'true') + '">发光 ' + (Store.meta().glow === false ? '关' : '开') + '</button>' +
+      '<span id="paceInfo" style="color:var(--muted);font-size:12px;align-self:center">第 1 / ' + lines.length + ' 行</span>' +
+      '<span style="color:var(--muted);font-size:12px;align-self:center;margin-left:auto" id="paceWpm">' + wpm + ' WPM</span></div>';
+    const inner = $('#pacerInner');
+    inner.innerHTML = lines.map((l, i) => '<span class="pacer-line" data-i="' + i + '">' + l + '</span>').join('');
+    $('#paceToggle').addEventListener('click', togglePause);
+    $('#paceStop').addEventListener('click', () => settle(false));
+    const glowBtn = $('#glowToggle');
+    if (glowBtn) glowBtn.addEventListener('click', () => {
+      const on = glowBtn.getAttribute('aria-pressed') !== 'true';
+      glowBtn.setAttribute('aria-pressed', String(on));
+      glowBtn.textContent = '发光 ' + (on ? '开' : '关');
+      $('#pacerStage').classList.toggle('glow', on);
+      Store.setMeta({ glow: on });
+    });
+    if (onKey) document.removeEventListener('keydown', onKey);
+    onKey = ev => { if (ev.code === 'Space') { ev.preventDefault(); togglePause(); } };
+    document.addEventListener('keydown', onKey);
+    if (typeof Assist !== 'undefined') Assist.startRound('pacer');
+  }
+
+  function highlight(){
+    const nodes = $$('.pacer-line', $('#pacerInner') || document.createElement('div'));
+    nodes.forEach((n, i) => {
+      n.classList.toggle('active', i === idx);
+      n.classList.toggle('passed', i < idx);
+    });
+    if (nodes[idx]) {
+      const inner = $('#pacerInner');
+      const offset = nodes[idx].offsetTop - nodes[0].offsetTop;
+      inner.style.transform = 'translateY(' + (-offset) + 'px)';
+    }
+    const info = $('#paceInfo');
+    if (info) info.textContent = '第 ' + Math.min(idx + 1, lines.length) + ' / ' + lines.length + ' 行';
+    if (typeof Assist !== 'undefined') Assist.setGuide(0.5);
+  }
+
+  function step(){
+    if (paused || !playing) return;
+    if (idx >= lines.length) { settle(true); return; }
+    maxIdx = Math.max(maxIdx, idx + 1);
+    highlight();
+    const wait = Math.max(60, lines[idx].length / wpm * 60000);
+    idx += 1;
+    timer = setTimeout(step, wait);
+  }
+
+  function startPlay(){
+    playing = true; paused = false; finished = false;
+    idx = 0; maxIdx = 0; activeMs = 0; segStart = Date.now();
+    Store.setMeta({ lastPacerWpm: wpm, lastText: textId });
+    playView();
+    step();
+  }
+
+  function togglePause(){
+    if (!playing || finished) return;
+    paused = !paused;
+    const btn = $('#paceToggle');
+    if (paused) {
+      clearTimeout(timer);
+      activeMs += Date.now() - segStart;
+      if (btn) btn.textContent = '继续';
+    } else {
+      segStart = Date.now();
+      if (btn) btn.textContent = '暂停';
+      step();
+    }
+  }
+
+  function settle(completed){
+    if (finished) return;
+    finished = true;
+    playing = false;
+    clearTimeout(timer);
+    if (!paused) activeMs += Date.now() - segStart;
+    document.removeEventListener('keydown', onKey);
+    const durationMs = Math.max(500, activeMs);
+    const rate = clamp(maxIdx / lines.length, 0, 1);
+    const followRate = followRateNow();
+    const rec = { textId: textId, wpm: wpm, completionRate: rate, durationMs: durationMs, date: Date.now() };
+    if (followRate != null) rec.followRate = followRate;
+    saveRecord('pacer', rec);
+
+    $('#pacerBody').innerHTML = resultCard({
+      big: Math.round(rate * 100) + '%',
+      unit: completed ? '整篇完成' : '已扫比例',
+      sub: '设定 ' + wpm + ' WPM · ' + Math.round(rate * lines.length) + ' / ' + lines.length + ' 行',
+      stats: [
+        { k: '完成行数', v: Math.round(rate * lines.length) + ' 行' },
+        { k: '用时', v: fmtClock(durationMs) },
+        { k: '专注占比', v: followRate == null ? '未开启' : followRate + '%' }
+      ]
+    });
+    resultActions([
+      { label: '去读后测验', primary: true, onClick: () => go('#/quiz?text=' + textId + '&wpm=' + wpm) },
+      { label: '再来一局', onClick: () => Train.open('pacer', { wpm: wpm, text: textId }) },
+      { label: '查看成绩', onClick: () => go('#/records') }
+    ]);
+    if (typeof Assist !== 'undefined') Assist.endRound();
+  }
+
+  const onVis = () => { if (document.hidden && playing && !paused) togglePause(); };
+  document.addEventListener('visibilitychange', onVis);
+
+  setupView();
+  return {
+    destroy(){
+      clearTimeout(timer);
+      document.removeEventListener('visibilitychange', onVis);
+      if (onKey) document.removeEventListener('keydown', onKey);
+      if (playing && !finished && typeof Assist !== 'undefined') Assist.endRound();
+    }
+  };
+}
+
+/* ===== 模式四：读后理解测验 ===== */
+function buildQuiz(params){
+  const paramText = getText(params.text) ? params.text : null;
+  const readingWpm = params.wpm ? parseInt(params.wpm, 10) : null;
+  let textId = paramText;
+  let answers = [];
+  let cur = 0;
+  let finished = false;
+
+  stageEl.innerHTML = headBlock('读后测验', '内置文本各 5 题，自定义文本按你加的题量；正确率与阅读速度同屏') + '<div id="quizBody"></div>';
+  bindBack(stageEl);
+  setGauge(readingWpm ? String(readingWpm) : '独立', readingWpm ? 'WPM' : '测验');
+
+  function setupView(){
+    $('#quizBody').innerHTML =
+      '<div class="panel"><div class="panel-head"><h3>选一篇开始测验</h3><span style="font-size:11.5px;color:var(--muted)">独立测验不记录阅读速度</span></div>' +
+      '<div class="text-list" id="quizTextList">' + allTexts().map(t =>
+        '<button class="text-item" data-text="' + t.id + '"><b>' + esc(t.title) + '</b><em>' + (t.questions ? t.questions.length + ' 题' : '无题目') + '</em><small>' + esc(t.body.slice(0, 64)) + '…</small></button>'
+      ).join('') + '<button class="text-item add" data-add-text>＋ 自定义文本</button></div></div>';
+    $$('#quizTextList [data-text]').forEach(b => b.addEventListener('click', () => {
+      const t = getText(b.getAttribute('data-text'));
+      if (!t || !t.questions || !t.questions.length) {
+        toast('这篇还没有题目，先补一题才能测理解', 'muted');
+        textEditor.open(t ? t.id : null, () => go('#/quiz'));
+        return;
+      }
+      textId = b.getAttribute('data-text');
+      startQuiz();
+    }));
+    const qAdd = $('#quizTextList [data-add-text]');
+    if (qAdd) qAdd.addEventListener('click', () => textEditor.open(null, id => { if (id) go('#/quiz?text=' + id); }));
+  }
+
+  function startQuiz(){
+    const N = (getText(textId) || TEXTS[0]).questions.length;
+    answers = new Array(N).fill(null);
+    cur = 0;
+    finished = false;
+    renderQ();
+  }
+
+  function renderQ(){
+    const t = getText(textId);
+    const q = t.questions[cur];
+    const box = $('#quizBody');
+    box.innerHTML =
+      '<div class="quiz-wrap"><div class="panel">' +
+        '<div class="panel-head"><h3>' + textLabel(textId) + '</h3><span style="font-size:11.5px;color:var(--muted)">第 ' + (cur + 1) + ' / ' + t.questions.length + ' 题</span></div>' +
+        '<p class="quiz-q">' + esc(q.q) + '</p>' +
+        '<div class="quiz-opts" id="opts">' + q.opts.map((o, i) =>
+          '<button class="opt" data-opt="' + i + '" aria-pressed="' + (answers[cur] === i) + '"><span class="idx">' + 'ABCD'[i] + '</span><span>' + esc(o) + '</span></button>'
+        ).join('') + '</div>' +
+        '<div class="quiz-bar"><div class="quiz-progress">' + answers.map((a, i) =>
+          '<i class="' + (i === cur ? 'on' : (a != null ? 'done' : '')) + '"></i>').join('') + '</div>' +
+          '<div style="display:flex;gap:10px">' +
+            (cur > 0 ? '<button class="btn" id="prevQ">上一题</button>' : '') +
+            '<button class="btn primary" id="nextQ"' + (answers[cur] == null ? ' disabled' : '') + '>' + (cur === t.questions.length - 1 ? '交卷' : '下一题') + '</button>' +
+          '</div></div>' +
+      '</div></div>';
+
+    $$('#opts [data-opt]').forEach(b => b.addEventListener('click', () => {
+      answers[cur] = parseInt(b.getAttribute('data-opt'), 10);
+      $$('#opts [data-opt]').forEach(x => x.setAttribute('aria-pressed', String(parseInt(x.getAttribute('data-opt'), 10) === answers[cur])));
+      $('#nextQ').disabled = false;
+    }));
+    $('#nextQ').addEventListener('click', () => {
+      if (answers[cur] == null) return;
+      if (cur === t.questions.length - 1) finishQuiz(); else { cur += 1; renderQ(); }
+    });
+    const prev = $('#prevQ');
+    if (prev) prev.addEventListener('click', () => { cur -= 1; renderQ(); });
+  }
+
+  function finishQuiz(){
+    const t = getText(textId);
+    const correct = t.questions.reduce((n, q, i) => n + (answers[i] === q.a ? 1 : 0), 0);
+    const acc = Math.round(correct / t.questions.length * 100);
+    finished = true;
+    saveRecord('quiz', { textId: textId, correct: correct, total: t.questions.length, readingWpm: readingWpm, date: Date.now() });
+
+    $('#quizBody').innerHTML = resultCard({
+      big: acc + '%',
+      unit: '正确率 · ' + correct + ' / ' + t.questions.length,
+      sub: readingWpm ? '衔接阅读时的 ' + readingWpm + ' WPM' : '独立测验，不记录阅读速度',
+      stats: [
+        { k: '正确题数', v: correct + ' / ' + t.questions.length },
+        { k: '阅读速度', v: readingWpm ? readingWpm + ' WPM' : '—' },
+        { k: '文本', v: '《' + t.title + '》' }
+      ]
+    });
+    resultActions([
+      { label: '看看错在哪', primary: true, onClick: () => review() },
+      { label: '再测这篇', onClick: () => Train.open('quiz', { text: textId, wpm: readingWpm || '' }) },
+      { label: '查看成绩', onClick: () => go('#/records') }
+    ]);
+  }
+
+  function review(){
+    const t = getText(textId);
+    $('#quizBody').innerHTML = '<div class="quiz-wrap">' + t.questions.map((q, i) => {
+      const ok = answers[i] === q.a;
+      return '<div class="panel" style="margin-bottom:12px">' +
+        '<div class="panel-head"><h3>第 ' + (i + 1) + ' 题</h3><span style="font-size:11.5px;color:' + (ok ? 'var(--green)' : 'var(--red)') + '">' + (ok ? '答对' : '答错') + '</span></div>' +
+        '<p class="quiz-q" style="font-size:15px;margin-bottom:12px">' + esc(q.q) + '</p>' +
+        '<div class="quiz-opts">' + q.opts.map((o, j) => {
+          let cls = 'opt';
+          if (j === q.a) cls += ' correct';
+          else if (j === answers[i]) cls += ' wrong';
+          return '<span class="' + cls + '" style="cursor:default"><span class="idx">' + 'ABCD'[j] + '</span><span>' + esc(o) + '</span></span>';
+        }).join('') + '</div></div>';
+    }).join('') +
+    '<div style="display:flex;gap:10px;justify-content:center;margin:22px 0 10px"><button class="btn primary" data-back>回到训练</button><button class="btn" data-again>再测一篇</button></div></div>';
+    $$('[data-back]').forEach(b => b.addEventListener('click', () => go('#/home')));
+    const again = $('[data-again]');
+    if (again) again.addEventListener('click', () => Train.open('quiz', {}));
+  }
+
+  const backGuard = ev => {
+    const t = getText(textId);
+    if (!t || finished || answers.every(a => a == null)) return;
+    const btn = ev.target.closest('[data-back]');
+    if (!btn) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    confirmModal('还没答完，确定退出？', '当前已作答 ' + answers.filter(a => a != null).length + ' 题，退出后本次答案不会保存。', '退出测验', () => go('#/home'));
+  };
+  stageEl.addEventListener('click', backGuard, true);
+
+  if (textId) startQuiz(); else setupView();
+  return {
+    destroy(){
+      stageEl.removeEventListener('click', backGuard, true);
+    }
+  };
+}
+
+window.SR.trainers = Object.assign(window.SR.trainers || {}, { pacer: buildPacer, quiz: buildQuiz });
+})();
+</script>
+<script>
+/* ===== 坐姿 / 眼动辅助层 ===== */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const Assist = (function(){
+  const SR = window.SR;
+  const { Store, toast, openModal, closeModal } = SR;
+  const MODEL_URLS = [
+    './assets/face_landmarker.task',
+    'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task'
+  ];
+  const WASM = 'https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm';
+  const SENSE = {
+    low:  { f: 1.45, delay: 12000, awayDelay: 6500 },
+    mid:  { f: 1.0,  delay: 10000, awayDelay: 5000 },
+    high: { f: 0.72, delay: 8000,  awayDelay: 4000 }
+  };
+  const st = { on: false, busy: false, paused: false, denied: false, degraded: 0 };
+  let stream = null, video = null, landmarker = null, rafId = 0;
+  let lastTs = 0, costAvg = 0, costN = 0, lastGazeAt = 0;
+  const last = { lms: null, faces: 0, cost: 0, fps: 0, at: 0, pitch: 0, yaw: 0, irisX: 0.5, irisY: 0.5 };
+  let round = null;
+  const cal = { samples: [], base: null };
+  const post = { bad: false, badSince: 0, lastPrompt: 0, value: '未检测' };
+  const gaze = { state: 'idle', awaySince: 0, lastPrompt: 0, sx: 0.5, sy: 0.5, guide: null, value: '未检测' };
+
+  function sense(){ return SENSE[Store.meta().sensitivity] || SENSE.mid; }
+  function isOn(){ return st.on; }
+  function setLab(v){ st.lab = !!v; }
+  function isLab(){ return !!st.lab; }
+  function debug(){
+    const s = sense();
+    return {
+      on: st.on, busy: st.busy, paused: st.paused, degraded: st.degraded,
+      faces: last.faces, cost: Math.round(last.cost), fps: Math.round(last.fps || 0),
+      pitch: last.pitch, yaw: last.yaw, irisX: last.irisX, irisY: last.irisY,
+      lms: last.lms, posture: post.value, gaze: gaze.value, video: video,
+      calibrated: !!cal.base,
+      th: { scale: 0.11 * s.f, cy: 0.055 * s.f, pitch: 0.075 * s.f }
+    };
+  }
+  function resetCal(){ cal.samples = []; cal.base = null; }
+
+  function pill(){
+    const el = $('#assistPill'), txt = $('#assistPillText');
+    if (!el || !txt) return;
+    el.classList.toggle('is-on', st.on && !st.paused);
+    if (st.busy) txt.textContent = '辅助 准备中';
+    else txt.textContent = st.on ? (st.paused ? '辅助 暂停' : '辅助 开') : '辅助 关';
+  }
+  function hudRow(id, cls, text){
+    const row = $('#' + id);
+    if (!row) return;
+    row.classList.remove('good', 'warn', 'bad');
+    if (cls) row.classList.add(cls);
+    const v = $('.value', row);
+    if (v) v.textContent = text;
+  }
+  function syncHud(){
+    const hud = $('#hud');
+    if (!hud) return;
+    const onTrain = /^#\/(schulte|rsvp|pacer|quiz)/.test(location.hash || '');
+    hud.classList.toggle('show', st.on && onTrain);
+  }
+  function paintHud(){
+    if (!st.on) { hudRow('hudPosture', '', '未开启'); hudRow('hudGaze', '', '未开启'); return; }
+    if (st.paused) { hudRow('hudPosture', 'warn', '辅助已暂停'); hudRow('hudGaze', 'warn', '辅助已暂停'); return; }
+    hudRow('hudPosture', post.value === '良好' ? 'good' : (post.value === '前倾' ? 'bad' : ''), post.value);
+    const g = gaze.value;
+    hudRow('hudGaze', g === '跟随中' || g === '注视中' ? 'good' : (g === '未跟随' ? 'warn' : (g === '离开屏幕' ? 'bad' : '')), g);
+  }
+
+  async function ensureModel(){
+    if (landmarker) return;
+    const mod = await import('https://fastly.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+    const fileset = await mod.FilesetResolver.forVisionTasks(WASM);
+    let lastErr = null;
+    for (const url of MODEL_URLS) {
+      for (const delegate of ['GPU', 'CPU']) {
+        try {
+          landmarker = await mod.FaceLandmarker.createFromOptions(fileset, {
+            baseOptions: { modelAssetPath: url, delegate: delegate },
+            runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: false
+          });
+          return;
+        } catch (e) { lastErr = e; }
+      }
+    }
+    throw lastErr || new Error('model unavailable');
+  }
+
+  async function start(){
+    if (st.busy || st.on) return;
+    st.busy = true;
+    pill();
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast('当前页面无法读取摄像头，请用 HTTPS 或本地地址打开', 'muted');
+        st.busy = false; return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false });
+      } catch (err) {
+        console.warn('[assist] permission', err && err.name);
+        st.denied = true; st.busy = false;
+        const name = (err && err.name) || '';
+        if (name === 'NotAllowedError' || name === 'SecurityError') toast('未获得摄像头授权，四种训练仍然完整可用', 'muted');
+        else if (name === 'NotFoundError' || name === 'OverconstrainedError') toast('没找到可用摄像头；用本机文件打开时也无法调用摄像头', 'muted');
+        else toast('摄像头未能启动，四种训练仍然完整可用', 'muted');
+        pill(); return;
+      }
+      video = document.createElement('video');
+      video.playsInline = true; video.muted = true; video.autoplay = true;
+      video.style.cssText = 'position:fixed;width:1px;height:1px;opacity:0;pointer-events:none;left:-10px;top:-10px';
+      document.body.appendChild(video);
+      video.srcObject = stream;
+      await video.play().catch(() => {});
+      try {
+        await ensureModel();
+      } catch (err) {
+        console.warn('[assist] model', err && err.message);
+        toast('辅助模型加载失败，已保持关闭（不影响训练）', 'muted');
+        stopAll(); st.busy = false; return;
+      }
+      stream.getVideoTracks().forEach(track => {
+        track.addEventListener('ended', () => {
+          if (st.on) { st.paused = true; toast('摄像头已断开，辅助已暂停', 'muted'); pill(); paintHud(); }
+        });
+      });
+      st.on = true; st.busy = false; st.paused = false; st.denied = false; st.degraded = 0;
+      Store.setMeta({ cameraEnabled: true });
+      cal.samples = []; cal.base = null;
+      post.value = '校准中…'; gaze.value = '校准中…';
+      paintHud(); pill(); syncHud();
+      if (!st.lab) toast('辅助已开启，画面只在本机处理');
+      loop();
+    } catch (err) {
+      console.warn('[assist] startup', err && err.message);
+      st.busy = false;
+      toast('辅助启动失败，训练功能不受影响', 'muted');
+      stopAll();
+    }
+  }
+
+  function stopAll(){
+    cancelAnimationFrame(rafId); rafId = 0;
+    if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+    if (video) { try { video.pause(); } catch (e) {} video.remove(); video = null; }
+    st.on = false; st.paused = false;
+    post.value = '未检测'; gaze.value = '未检测';
+    Store.setMeta({ cameraEnabled: false });
+    pill(); paintHud(); syncHud();
+  }
+
+  function loop(){
+    if (!st.on) return;
+    rafId = requestAnimationFrame(loop);
+    const now = performance.now();
+    if (document.hidden || !video || video.readyState < 2) return;
+    if (now - lastTs < (st.degraded ? 240 : 66)) return;
+    lastTs = now;
+    if (!landmarker) return;
+    let res = null;
+    const t0 = performance.now();
+    try {
+      res = landmarker.detectForVideo(video, now);
+    } catch (e) { return; }
+    const cost = performance.now() - t0;
+    last.cost = cost;
+    if (last.at && now - last.at > 0) last.fps = last.fps ? last.fps * 0.85 + (1000 / (now - last.at)) * 0.15 : 1000 / (now - last.at);
+    last.at = now;
+    if (costN > 8) { costAvg = costAvg * 0.85 + cost * 0.15; }
+    costN += 1;
+    if (costN > 70) {
+      if (costAvg > 190 && st.degraded === 0) {
+        st.degraded = 1;
+        if (!st.lab) toast('设备有点吃力，已关闭眼动分析，只保留坐姿提示', 'muted');
+      } else if (costAvg > 320 && st.degraded === 1) {
+        st.degraded = 2;
+        if (!st.lab) toast('性能不足，辅助已整体关闭', 'muted');
+        stopAll();
+        return;
+      }
+    }
+    judge(res, now);
+  }
+
+  function judge(res, now){
+    const lms = res && res.faceLandmarks && res.faceLandmarks[0];
+    const s = sense();
+    last.lms = lms || null; last.faces = lms ? 1 : 0;
+    if (!lms) {
+      post.value = '未检测'; post.bad = false; post.badSince = 0;
+      gaze.value = '离开屏幕';
+      if (!gaze.awaySince) gaze.awaySince = now;
+      if (now - gaze.awaySince >= s.awayDelay && now - gaze.lastPrompt >= 60000) {
+        gaze.lastPrompt = now;
+        if (!st.lab) toast('回到屏幕上，训练还在继续');
+      }
+      if (round) round.totalMs += 0;
+      paintHud(); return;
+    }
+    gaze.awaySince = 0;
+
+    let minX = 1, maxX = 0, minY = 1, maxY = 0;
+    for (let i = 0; i < lms.length; i++) {
+      const p = lms[i];
+      if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+    }
+    const faceH = maxY - minY;
+    const cy = (maxY + minY) / 2;
+    const eyeY = (lms[33].y + lms[263].y) / 2;
+    const eyeX = (lms[33].x + lms[263].x) / 2;
+    const eyeW = Math.max(0.02, Math.abs(lms[263].x - lms[33].x));
+    const nose = lms[1], chin = lms[152];
+    const pitchIdx = (nose.y - eyeY) / Math.max(0.02, chin.y - eyeY);
+    const yawIdx = (nose.x - eyeX) / eyeW;
+    last.pitch = pitchIdx; last.yaw = yawIdx;
+
+    if (!cal.base) {
+      cal.samples.push({ faceH, cy, pitchIdx, yawIdx });
+      if (cal.samples.length >= 10) {
+        cal.base = cal.samples.reduce((a, b) => ({
+          faceH: a.faceH + b.faceH / 10, cy: a.cy + b.cy / 10, pitchIdx: a.pitchIdx + b.pitchIdx / 10, yawIdx: a.yawIdx + b.yawIdx / 10
+        }), { faceH: 0, cy: 0, pitchIdx: 0, yawIdx: 0 });
+      }
+      paintHud(); return;
+    }
+
+    const base = cal.base;
+    const dScale = faceH / base.faceH - 1;
+    const dCy = cy - base.cy;
+    const dPitch = pitchIdx - base.pitchIdx;
+    const th = { scale: 0.11 * s.f, cy: 0.055 * s.f, pitch: 0.075 * s.f };
+
+    if (st.degraded >= 1) {
+      post.bad = dScale > th.scale * 1.4 || dCy > th.cy * 1.4 || dPitch > th.pitch * 1.4;
+    } else {
+      post.bad = dScale > th.scale || dCy > th.cy || dPitch > th.pitch;
+    }
+    post.value = post.bad ? '前倾' : '良好';
+
+    if (post.bad) {
+      if (!post.badSince) post.badSince = now;
+      if (now - post.badSince >= s.delay && now - post.lastPrompt >= 90000) {
+        post.lastPrompt = now;
+        if (!st.lab) toast('坐直一点，肩线放松');
+      }
+    } else {
+      post.badSince = 0;
+    }
+
+    /* 粗粒度注视判断 */
+    if (st.degraded >= 1) {
+      gaze.value = '已降级';
+      paintHud(); return;
+    }
+    const away = Math.abs(yawIdx) > 0.34 || dPitch > 0.22 || post.value === '未检测';
+    if (away) {
+      gaze.state = 'away'; gaze.value = '离开屏幕';
+      if (!gaze.awaySince) gaze.awaySince = now;
+      if (now - gaze.awaySince >= s.awayDelay && now - gaze.lastPrompt >= 60000) {
+        gaze.lastPrompt = now;
+        if (!st.lab) toast('视线离开了一会儿，回到引导行');
+      }
+    } else {
+      const irisR = lms[468], irisL = lms[473];
+      const hR = Math.max(0.004, Math.abs(lms[133].x - lms[33].x));
+      const vR = Math.max(0.004, Math.abs(lms[145].y - lms[159].y));
+      const gx = ((irisR.x + irisL.x) / 2 - eyeX) / eyeW;
+      const gy = ((irisR.y + irisL.y) / 2 - (lms[159].y + lms[145].y) / 2) / vR;
+      const sy = 0.5 + gy * 0.8 + dPitch * 1.6;
+      const sx = 0.5 - yawIdx * 1.4 + gx * 0.8;
+      gaze.sx = sx; gaze.sy = sy; last.irisX = gx; last.irisY = gy;
+      if (gaze.guide != null) {
+        const follow = Math.abs(sy - gaze.guide) < 0.2;
+        gaze.state = follow ? 'follow' : 'idle';
+        gaze.value = follow ? '跟随中' : '未跟随';
+      } else {
+        gaze.state = 'follow';
+        gaze.value = '注视中';
+      }
+    }
+    if (round) {
+      round.totalMs += 66;
+      if (gaze.state === 'follow') round.followMs += 66;
+    }
+    paintHud();
+  }
+
+  function enableDialog(){
+    if (st.on) {
+      const sens = Store.meta().sensitivity;
+      const m = openModal(
+        '<h3>摄像头辅助</h3>' +
+        '<p>辅助正在运行：' + (st.paused ? '已暂停（摄像头断开）' : '坐姿与注视状态显示在训练页右下角') + '。</p>' +
+        '<div class="field" style="margin:16px 0 6px"><label>提示灵敏度</label><div class="seg" id="senseSeg">' +
+          [['low','低'],['mid','中'],['high','高']].map(([k, t]) => '<button data-sense="' + k + '" aria-pressed="' + (sens === k) + '">' + t + '</button>').join('') +
+        '</div></div>' +
+        '<p style="color:var(--muted);font-size:12px">灵敏度越高越早提醒；同一类提示仍有冷却时间。</p>' +
+        '<div class="modal-actions"><button class="btn" data-close>继续训练</button><button class="btn" data-off>关闭辅助</button></div>'
+      );
+      m.querySelector('[data-close]').addEventListener('click', closeModal);
+      m.querySelector('[data-off]').addEventListener('click', () => { closeModal(); stopAll(); toast('辅助已关闭，训练照常进行', 'muted'); });
+      $$('#senseSeg [data-sense]').forEach(b => b.addEventListener('click', () => {
+        Store.setMeta({ sensitivity: b.getAttribute('data-sense') });
+        $$('#senseSeg [data-sense]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+        toast('灵敏度已改为' + (b.textContent === '低' ? '低' : b.textContent === '高' ? '高' : '中') + '档', 'muted');
+      }));
+      return;
+    }
+    const m = openModal(
+      '<h3>开启摄像头辅助</h3>' +
+      '<p>摄像头只为两件事服务，不参与打分：</p>' +
+      '<ul><li>坐姿提醒：头前倾、含胸驼背持续一段时间后，角落轻提示一句。</li>' +
+      '<li>专注反馈：只判断视线是否在屏幕、是否跟着引导行走。</li></ul>' +
+      '<p>画面在浏览器内本地处理，不上传、不保存。辅助默认关闭，也不影响四种训练的任何功能。</p>' +
+      '<p style="color:var(--muted);font-size:12px">网页端只做粗粒度判断，不承诺精确注视点定位。</p>' +
+      (st.denied ? '<p style="color:var(--muted);font-size:12px">上次未获得授权：可在地址栏的权限设置里允许摄像头后重试。</p>' : '') +
+      '<div class="modal-actions"><button class="btn" data-close>先不用</button><button class="btn primary" data-go-live>' + (st.denied ? '重新授权' : '开启并授权') + '</button></div>'
+    );
+    m.querySelector('[data-close]').addEventListener('click', closeModal);
+    m.querySelector('[data-go-live]').addEventListener('click', () => { closeModal(); start(); });
+  }
+
+  function startRound(mode){
+    round = { mode: mode, totalMs: 0, followMs: 0, startedAt: Date.now() };
+    post.lastPrompt = 0; post.badSince = 0; gaze.lastPrompt = 0; gaze.awaySince = 0;
+  }
+  function endRound(){
+    gaze.guide = null;
+  }
+  function roundStats(){
+    if (!round) return null;
+    return { totalMs: round.totalMs, rate: round.totalMs ? Math.min(1, round.followMs / round.totalMs) : 0 };
+  }
+  function setGuide(v){ gaze.guide = v; }
+
+  window.addEventListener('hashchange', syncHud);
+
+  return { isOn, startRound, endRound, roundStats, setGuide, syncHud, enableDialog, stopAll, start, setLab, isLab, debug, resetCal,
+    refresh(){ pill(); paintHud(); syncHud(); } };
+})();
+window.Assist = Assist;
+SR.refreshAssist = () => Assist.refresh();
+
+
+/* ===== 实验室：追踪验证 ===== */
+(function(){
+  const canvas = document.getElementById('labCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const stage = canvas.parentElement;
+  const empty = document.getElementById('labEmpty');
+  const stateEl = document.getElementById('labState');
+  const fpsEl = document.getElementById('labFps');
+  const facesEl = document.getElementById('labFaces');
+  const headEl = document.getElementById('labHead');
+  const irisEl = document.getElementById('labIris');
+  const postEl = document.getElementById('labPost');
+  const gazeEl = document.getElementById('labGaze');
+  const baseEl = document.getElementById('labBase');
+  const toggle = document.getElementById('labToggle');
+  const recBtn = document.getElementById('labRec');
+  const expBtn = document.getElementById('labExport');
+  let raf = 0, lastUi = 0, samples = [], recUntil = 0, lastSample = 0;
+
+  function drawLms(lms, w, h){
+    ctx.fillStyle = 'rgba(217,164,65,.30)';
+    for (var i = 0; i < lms.length; i += 8) {
+      var p = lms[i];
+      ctx.beginPath();
+      ctx.arc(w - p.x * w, p.y * h, 1.3, 0, 6.283);
+      ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(217,164,65,.65)';
+    ctx.lineWidth = 1;
+    var pts = [33, 133, 159, 145, 263, 362, 386, 374, 1, 152];
+    ctx.beginPath();
+    for (var k = 0; k < pts.length; k++) {
+      var q = lms[pts[k]];
+      var x = w - q.x * w, y = q.y * h;
+      if (k) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  function paint(){
+    raf = requestAnimationFrame(paint);
+    var d = Assist.debug();
+    if (!d.on || !d.video || d.video.readyState < 2) {
+      stage.classList.remove('live');
+      empty.textContent = d.busy ? '正在准备模型（首次约需数十秒）…' : '镜头未开启';
+      return;
+    }
+    stage.classList.add('live');
+    var w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.save();
+    ctx.translate(w, 0); ctx.scale(-1, 1);
+    ctx.drawImage(d.video, 0, 0, w, h);
+    ctx.restore();
+    if (d.lms) drawLms(d.lms, w, h);
+
+    if (performance.now() - lastUi > 260) {
+      lastUi = performance.now();
+      stateEl.textContent = d.busy ? '准备中' : d.paused ? '已暂停' : '运行中' + (d.degraded ? ' · 降级 L' + d.degraded : '');
+      fpsEl.textContent = (d.fps || 0) + ' fps · ' + (d.cost || 0) + ' ms';
+      facesEl.textContent = d.faces ? '1 · 478 点' : '0';
+      headEl.textContent = d.pitch.toFixed(3) + ' / ' + d.yaw.toFixed(3);
+      irisEl.textContent = d.irisX.toFixed(2) + ' / ' + d.irisY.toFixed(2);
+      postEl.textContent = d.posture;
+      gazeEl.textContent = d.gaze;
+      baseEl.textContent = d.calibrated ? '已校准' : '采集中…';
+    }
+
+    if (recUntil && Date.now() < recUntil && Date.now() - lastSample >= 1000) {
+      lastSample = Date.now();
+      samples.push({ t: new Date().toISOString(), faces: d.faces, costMs: d.cost, fps: d.fps, pitch: +d.pitch.toFixed(4), yaw: +d.yaw.toFixed(4), irisX: +d.irisX.toFixed(3), irisY: +d.irisY.toFixed(3), posture: d.posture, gaze: d.gaze, degraded: d.degraded });
+      recBtn.textContent = '记录中 ' + Math.max(0, Math.ceil((recUntil - Date.now()) / 1000)) + 's';
+    } else if (recUntil && Date.now() >= recUntil) {
+      recUntil = 0;
+      recBtn.textContent = '记录 30 秒';
+      if (samples.length) { expBtn.disabled = false; recBtn.disabled = false; }
+    }
+  }
+
+  toggle.addEventListener('click', function(){
+    if (Assist.isOn()) {
+      Assist.stopAll();
+      toggle.textContent = '开启镜头';
+      return;
+    }
+    Assist.setLab(true);
+    toggle.textContent = '停止镜头';
+    empty.textContent = '正在准备模型（首次约需数十秒）…';
+    Assist.start().then(function(){ if (!Assist.isOn()) toggle.textContent = '开启镜头'; });
+  });
+
+  recBtn.addEventListener('click', function(){
+    if (!Assist.isOn()) return;
+    if (recUntil) return;
+    samples = []; lastSample = 0; recUntil = Date.now() + 30000;
+    expBtn.disabled = true; recBtn.disabled = true;
+    recBtn.textContent = '记录中 30s';
+  });
+
+  expBtn.addEventListener('click', function(){
+    if (!samples.length) return;
+    var payload = { exportedAt: new Date().toISOString(), ua: navigator.userAgent, samples: samples };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'face-lab-' + new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-') + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+  });
+
+  document.getElementById('labSense').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-sense]');
+    if (!b) return;
+    window.SR.Store.setMeta({ sensitivity: b.getAttribute('data-sense') });
+    Array.prototype.forEach.call(document.querySelectorAll('#labSense [data-sense]'), function(x){ x.setAttribute('aria-pressed', String(x === b)); });
+    Assist.resetCal();
+  });
+
+  function beginLoop(){
+    cancelAnimationFrame(raf);
+    toggle.textContent = Assist.isOn() ? '停止镜头' : '开启镜头';
+    empty.textContent = Assist.isOn() ? '' : (Assist.debug().busy ? '正在准备模型…' : '镜头未开启');
+    raf = requestAnimationFrame(paint);
+  }
+  window.SR.labRender = beginLoop;
+  beginLoop();
+  window.addEventListener('hashchange', function(){
+    if (location.hash.indexOf('/lab') < 0) { cancelAnimationFrame(raf); raf = 0; Assist.setLab(false); if (Assist.isOn()) Assist.stopAll(); toggle.textContent = '开启镜头'; }
+  });
+})();
+
+/* ===== 启动 ===== */
+(function(){
+  const SR = window.SR;
+
+  /* 导航与入口 */
+  $$('[data-go]').forEach(el => {
+    el.addEventListener('click', ev => { ev.preventDefault(); SR.go(el.getAttribute('data-go')); });
+  });
+
+
+  /* 首页阅读窗演示 */
+  const words = ['专注', '不是', '逐字', '默念', '而是', '一次', '抓住', '一整块'];
+  const wordEl = $('#demoWord'), clockEl = $('#demoClock');
+  if (wordEl) {
+    let i = 0, t = 0;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce) setInterval(() => {
+      i = (i + 1) % words.length;
+      t += 0.2;
+      wordEl.classList.add('fade');
+      setTimeout(() => { wordEl.textContent = words[i]; wordEl.classList.remove('fade'); }, 120);
+      if (clockEl) clockEl.textContent = t.toFixed(1) + 's';
+    }, 700);
+  }
+
+  /* 首次渲染 */
+  if (!location.hash) { location.hash = '#/home'; }
+  SR.render();
+  Assist.syncHud();
+})();
+</script>
+</body>
+</html>
